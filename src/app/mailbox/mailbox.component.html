@@ -1,0 +1,23 @@
+<div class="flex flex-col h-screen justify-between">
+  <!-- Header -->
+  <app-header></app-header>
+    <div class="flex-grow flex items-center justify-center"> 
+    <!-- Google Sign-In Button -->
+    <div class="text-start">
+     <div *ngIf="loading">Loading emails...</div>
+
+      <ul *ngIf="!loading && emails.length > 0">
+        <li *ngFor="let email of emails">
+          <a (click)="viewEmail(email.id)">{{  email.subject  }}</a>
+        </li>
+      </ul>
+
+      <div *ngIf="!loading && emails.length === 0">
+        No emails found.
+      </div>
+    </div>
+    </div>
+   <!-- Footer -->
+   <app-footer></app-footer>
+
+</div>
