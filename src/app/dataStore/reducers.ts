@@ -7,6 +7,7 @@ import {
   loadEmailDetails,
   loadEmailDetailsSuccess,
   loadEmailDetailsFailure,
+  saveEmailDetails,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -48,7 +49,15 @@ const _emailReducer = createReducer(
     ...state,
     error,
     loading: false,
-  }))
+  })),
+  on(saveEmailDetails, (state, { emailDetails }) => ({
+    ...state,
+    emailDetails: {
+      ...state.emailDetails,
+      [emailDetails.id]: emailDetails,
+    },
+  })),
+  
 );
 
 export function emailReducer(state: State | undefined, action: Action) {

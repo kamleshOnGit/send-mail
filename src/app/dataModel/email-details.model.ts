@@ -35,7 +35,13 @@ export interface AttachmentMetadata {
   data: any; // base64 encoded data
 }
 
-export class EmailDetails {
-    id: any;
-
+export interface EmailDetails {
+  historyId: string;
+  id: string;
+  internalDate: number;
+  labelIds: string[];
+  payload: any; // Define more specifically if possible
+  sizeEstimate: number;
+  snippet: string;
+  threadId: string;
 }

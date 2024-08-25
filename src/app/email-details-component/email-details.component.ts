@@ -7,12 +7,17 @@ import { CommonModule } from '@angular/common';
 import {
   AttachmentMetadata,
   Email,
+  EmailDetails,
   EmailPart,
 } from '../dataModel/email-details.model';
 import { SafeHtml, DomSanitizer } from '@angular/platform-browser';
 import sanitizeHtml from 'sanitize-html';
 import * as he from 'he';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { select, State, Store } from '@ngrx/store';
+import { loadEmailDetails } from '../dataStore/actions';
+import { selectEmailDetails } from '../dataStore/selector';
+
 
 @Component({
   selector: 'app-email-details-component',
@@ -29,15 +34,29 @@ export class EmailDetailsComponent implements OnInit {
   bodyContent?: string;
   loading: boolean = true;
   attachments: any; // Array to hold attachment metadata
+  emailDetails$!: Observable<EmailDetails | undefined>;
 
   constructor(
     private route: ActivatedRoute,
-    private gmailService: GmailService
+    private gmailService: GmailService,
+    private store: Store
   ) {}
 
   ngOnInit() {
     const emailId: any = this.route.snapshot.paramMap.get('id');
-    this.fetchEmailDetails(emailId);
+    // this.fetchEmailDetails(emailId);
+    this.emailDetails$ = this.store.pipe(
+      select(selectEmailDetails, { emailId: this.emailId })
+    );
+    this.emailDetails$.subscribe((emailDetails) => {
+      if (emailDetails) {
+        // Use cached email details
+      } else {
+        // Fetch email details from the API
+        // this.fetchEmailDetails(emailId);
+        this.store.dispatch(loadEmailDetails({ emailId }));
+      }
+    });
   }
 
   fetchEmailDetails(emailId: string) {

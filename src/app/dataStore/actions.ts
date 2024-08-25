@@ -24,3 +24,10 @@ export const loadEmailDetailsFailure = createAction(
   '[Email] Load Email Details Failure',
   props<{ error: any }>()
 );
+
+export const saveEmailDetails = createAction(
+  '[Email] Save Email Details',
+  props<{ emailDetails: EmailDetails }>()
+);
+
+ 
