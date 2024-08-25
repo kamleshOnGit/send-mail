@@ -34,3 +34,8 @@ export interface AttachmentMetadata {
   size: number;
   data: any; // base64 encoded data
 }
+
+export class EmailDetails {
+    id: any;
+
+}

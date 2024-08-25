@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Email } from './email-details';
+import { Email } from '../dataModel/email-details.model';
 
 @Injectable({
   providedIn: 'root',

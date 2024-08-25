@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { AuthGuard } from './auth-gaurd.service';
+import { AuthGuard } from './services/auth-gaurd.service';
 import { LoginComponent } from './login/login.component';
 import { MailboxComponent } from './mailbox/mailbox.component';
 import { PagenotfoundComponent } from './pagenotfound/pagenotfound.component';

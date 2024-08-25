@@ -1,10 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { GmailService } from '../gmail.service';
-import { FooterComponent } from '../footer/footer.component';
-import { HeaderComponent } from '../header/header.component';
+import { GmailService } from '../services/gmail.service';
+import { FooterComponent } from '../shared/footer/footer.component';
+import { HeaderComponent } from '../shared/header/header.component';
 import { CommonModule } from '@angular/common';
-import { AttachmentMetadata, Email, EmailPart } from '../email-details';
+import {
+  AttachmentMetadata,
+  Email,
+  EmailPart,
+} from '../dataModel/email-details.model';
 import { SafeHtml, DomSanitizer } from '@angular/platform-browser';
 import sanitizeHtml from 'sanitize-html';
 import * as he from 'he';
@@ -68,8 +72,7 @@ export class EmailDetailsComponent implements OnInit {
     if (email.payload.parts) {
       const attachmentRequests: Observable<any>[] = email.payload.parts
         .filter(
-          (part: {
-            [x: string]: any; mimeType: string }) =>
+          (part: { [x: string]: any; mimeType: string }) =>
             part.mimeType === 'application/pdf' && part['body']?.attachmentId
         )
         .map((part: { body: { attachmentId: any } }) =>

@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
-import { AuthService } from '../auth.service';
-import { FooterComponent } from '../footer/footer.component';
-import { HeaderComponent } from '../header/header.component';
-import { GmailService } from '../gmail.service';
+import { AuthService } from '../services/auth.service';
+import { FooterComponent } from '../shared/footer/footer.component';
+import { HeaderComponent } from '../shared/header/header.component';
+import { GmailService } from '../services/gmail.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -18,7 +18,7 @@ import { forkJoin } from 'rxjs';
 export class MailboxComponent {
   emails: any[] = [];
   loading: boolean = true;
-  nextPageToken:any
+  nextPageToken: any;
   constructor(private gmailService: GmailService, private router: Router) {}
 
   ngOnInit(): void {

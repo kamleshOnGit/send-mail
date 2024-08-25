@@ -6,7 +6,7 @@ import {
   RouterLinkActive,
   Router,
 } from '@angular/router';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -16,15 +16,9 @@ import { AuthService } from '../auth.service';
   styleUrl: './header.component.css',
 })
 export class HeaderComponent {
-  constructor(private authServiceCustom: AuthService, private router: Router) {
-    
-  }
-
-  
+  constructor(private authServiceCustom: AuthService, private router: Router) {}
 
   logout() {
     this.authServiceCustom.logout();
   }
-
-
 }
