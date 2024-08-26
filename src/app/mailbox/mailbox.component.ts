@@ -125,6 +125,7 @@ export class MailboxComponent {
                   sizeEstimate: email?.sizeEstimate || 0,
                   snippet: email?.snippet || '',
                   threadId: email?.threadId || '',
+                  payload: email?.payload || undefined,
                   subject:
                     this.getHeaderValue(email?.payload?.headers, 'Subject') ||
                     '',

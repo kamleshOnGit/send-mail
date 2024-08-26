@@ -50,7 +50,8 @@ export class EmailDetailsComponent implements OnInit {
         // Use cached email details
         this.email = emailDetails;
         this.extractEmailDetails();
-        this.loading = false;
+        
+        console.log(this.email)
       } else {
         // Fetch email details from the API
         // this.fetchEmailDetails(emailId);
@@ -128,6 +129,7 @@ export class EmailDetailsComponent implements OnInit {
         this.email.payload.parts,
         this.email.payload.body
       );
+      this.loading = false;
     }
   }
 

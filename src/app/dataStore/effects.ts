@@ -64,7 +64,8 @@ export class EmailEffects {
                     sizeEstimate: email.sizeEstimate,
                     snippet: email.snippet,
                     threadId: email.threadId,
-                    subject: ''
+                    subject: '',
+                    payload: email?.payload || undefined,
                   },
                 })
               ),
