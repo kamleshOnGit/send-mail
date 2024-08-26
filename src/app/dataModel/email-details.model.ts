@@ -3,6 +3,7 @@ export interface Email {
   id: string;
   threadId: string;
   payload?: EmailPayload;
+  subject: string;
 }
 
 export interface EmailPayload {
@@ -40,8 +41,9 @@ export interface EmailDetails {
   id: string;
   internalDate: number;
   labelIds: string[];
-  payload: any; // Define more specifically if possible
   sizeEstimate: number;
   snippet: string;
   threadId: string;
+  payload?: EmailPayload;
+  subject: string;
 }

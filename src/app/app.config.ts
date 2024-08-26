@@ -5,6 +5,8 @@ import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideStore } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
+import { emailReducer } from './dataStore/reducers';
+import { EmailEffects } from './dataStore/effects';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -25,8 +27,8 @@ export const appConfig: ApplicationConfig = {
     //         },
     //     } as SocialAuthServiceConfig,
     // },
-    provideStore(),
-    provideEffects(),
-    provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() })
-],
+    provideStore({ email: emailReducer }),
+    provideEffects([EmailEffects]),
+    provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() }),
+  ],
 };

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Email } from '../dataModel/email-details.model';
+import { Email, EmailDetails } from '../dataModel/email-details.model';
 
 @Injectable({
   providedIn: 'root',
@@ -34,12 +34,12 @@ export class GmailService {
   }
 
   // Method to get a specific email by ID
-  getEmailById(emailId: string): Observable<Email> {
+  getEmailById(emailId: string): Observable<EmailDetails> {
     const url = `${this.apiUrl}users/me/messages/${emailId}`;
     const headers = new HttpHeaders({
       Authorization: `Bearer ${this.getAccessToken()}`,
     });
-    return this.http.get<Email>(url, { headers });
+    return this.http.get<EmailDetails>(url, { headers });
   }
 
   // Fetch attachment metadata

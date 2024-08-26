@@ -1,20 +1,24 @@
 // email.selectors.ts
 import { createSelector, createFeatureSelector } from '@ngrx/store';
 import { State } from './reducers';
-import { EmailDetails } from '../dataModel/email-details.model';
+import { Email, EmailDetails } from '../dataModel/email-details.model';
 
-
-export const selectEmails = (state: State) => state.emails;
-export const selectLoading = (state: State) => state.loading;
-// Selector to get the whole email state
 export const selectEmailState = createFeatureSelector<State>('email');
-
-export const selectEmailDetailsById = (id: string) =>
-  createSelector(selectEmailState, (state: State) => state.emailDetails[id]);
-
-export const selectEmailDetails = createSelector(
-  (state: State) => state.emailDetails,
-  (emailDetails: { [key: string]: EmailDetails }, props: { emailId: string }) =>
-    emailDetails[props.emailId]
+// Selector to fetch all emails
+export const selectAllEmails = createSelector(
+  selectEmailState,
+  (state: State) => state.emails
 );
 
+// Selector to check if there are any emails in the store
+export const selectHasEmails = createSelector(
+  selectAllEmails,
+  (emails: Email[]) => emails.length > 0
+);
+
+// Selector to get email details by id directly
+export const selectEmailDetailsById = (emailId: string) =>
+  createSelector(
+    selectEmailState,
+    (state: State) => state.emailDetails[emailId],
+  );

@@ -6,13 +6,13 @@
     <div class="text-start">
      <div *ngIf="loading">Loading emails...</div>
 
-      <ul *ngIf="!loading && emails.length > 0">
-        <li *ngFor="let email of emails">
+      <ul *ngIf="!loading && emails$">
+        <li *ngFor="let email of emails$ |async">
           <a (click)="viewEmail(email.id)">{{  email.subject  }}</a>
         </li>
       </ul>
 
-      <div *ngIf="!loading && emails.length === 0">
+      <div *ngIf="!loading && !emails$">
         No emails found.
       </div>
     </div>

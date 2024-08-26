@@ -1,8 +1,8 @@
 // email.effects.ts
 import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { from, of } from 'rxjs';
+import { catchError, map, mergeMap, switchMap } from 'rxjs/operators';
 
 import {
   loadEmails,
@@ -11,6 +11,7 @@ import {
   loadEmailDetails,
   loadEmailDetailsSuccess,
   loadEmailDetailsFailure,
+  saveEmailDetails,
 } from './actions';
 
 import { GmailService } from '../services/gmail.service';
@@ -42,6 +43,39 @@ export class EmailEffects {
           catchError((error) => of(loadEmailDetailsFailure({ error })))
         )
       )
+    )
+  );
+
+  loadEmailsSuccess$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(loadEmailsSuccess),
+      mergeMap(({ emails }) => {
+        const emailIds = emails.map((email) => email.id);
+        return from(emailIds).pipe(
+          mergeMap((id) =>
+            this.gmailService.getEmailById(id).pipe(
+              map((email) =>
+                saveEmailDetails({
+                  emailDetails: {
+                    id: email.id,
+                    historyId: email.historyId,
+                    internalDate: email.internalDate,
+                    labelIds: email.labelIds,
+                    sizeEstimate: email.sizeEstimate,
+                    snippet: email.snippet,
+                    threadId: email.threadId,
+                    subject: ''
+                  },
+                })
+              ),
+              catchError((error) => {
+                console.error('Error fetching email details:', error);
+                return of(); // Handle errors appropriately
+              })
+            )
+          )
+        );
+      })
     )
   );
 }

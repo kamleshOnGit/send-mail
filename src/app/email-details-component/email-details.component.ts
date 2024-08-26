@@ -14,10 +14,9 @@ import { SafeHtml, DomSanitizer } from '@angular/platform-browser';
 import sanitizeHtml from 'sanitize-html';
 import * as he from 'he';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
-import { select, State, Store } from '@ngrx/store';
+import { Store } from '@ngrx/store';
 import { loadEmailDetails } from '../dataStore/actions';
-import { selectEmailDetails } from '../dataStore/selector';
-
+import { selectEmailDetailsById } from '../dataStore/selector';
 
 @Component({
   selector: 'app-email-details-component',
@@ -45,12 +44,13 @@ export class EmailDetailsComponent implements OnInit {
   ngOnInit() {
     const emailId: any = this.route.snapshot.paramMap.get('id');
     // this.fetchEmailDetails(emailId);
-    this.emailDetails$ = this.store.pipe(
-      select(selectEmailDetails, { emailId: this.emailId })
-    );
+    this.emailDetails$ = this.store.select(selectEmailDetailsById(emailId));
     this.emailDetails$.subscribe((emailDetails) => {
       if (emailDetails) {
         // Use cached email details
+        this.email = emailDetails;
+        this.extractEmailDetails();
+        this.loading = false;
       } else {
         // Fetch email details from the API
         // this.fetchEmailDetails(emailId);

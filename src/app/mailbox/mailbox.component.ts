@@ -5,7 +5,21 @@ import { HeaderComponent } from '../shared/header/header.component';
 import { GmailService } from '../services/gmail.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Observable } from 'rxjs';
+import { select, Store } from '@ngrx/store';
+import { State } from '../dataStore/reducers';
+import {
+  loadEmails,
+  loadEmailsSuccess,
+  saveEmailDetails,
+  updateEmailInList,
+} from '../dataStore/actions';
+import { Email, EmailDetails } from '../dataModel/email-details.model';
+import {
+  selectHasEmails,
+  selectAllEmails,
+  selectEmailDetailsById,
+} from '../dataStore/selector';
 
 @Component({
   selector: 'app-mailbox',
@@ -16,15 +30,29 @@ import { forkJoin } from 'rxjs';
   imports: [FooterComponent, HeaderComponent, CommonModule],
 })
 export class MailboxComponent {
-  emails: any[] = [];
   loading: boolean = true;
   nextPageToken: any;
-  constructor(private gmailService: GmailService, private router: Router) {}
+  emails$: Observable<Email[]> | undefined;
+  constructor(
+    private gmailService: GmailService,
+    private router: Router,
+    private store: Store<State>
+  ) {}
 
   ngOnInit(): void {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     //Add 'implements OnInit' to the class.
-    this.fetchEmails();
+    // this.fetchEmails();
+    this.store.pipe(select(selectAllEmails)).subscribe((emails) => {
+      if (emails.length === 0) {
+        // Dispatch loadEmails action to fetch emails from API
+        this.store.dispatch(loadEmails());
+      } else {
+        // Emails are already loaded
+        this.emails$ = this.store.pipe(select(selectAllEmails));
+        this.loading = false;
+      }
+    });
   }
 
   fetchEmails(nextPageToken?: string): void {
@@ -33,37 +61,84 @@ export class MailboxComponent {
       // if (response.nextPageToken) {
       //   this.fetchEmails(response.nextPageToken);
       // }
+      this.store.dispatch(loadEmailsSuccess({ emails: response }));
       this.nextPageToken = response.nextPageToken;
       const emailIds = response.messages.map((message: any) => message.id);
       this.fetchEmailDetails(emailIds);
     });
   }
 
-  async fetchEmailDetails(emailIds: string[]): Promise<void> {
-    const emailDetails: any[] = [];
+  // async fetchEmailDetails(emailIds: string[]): Promise<void> {
+  //   const emailDetails: any[] = [];
 
-    for (const emailId of emailIds) {
-      try {
-        const email = await this.gmailService.getEmailById(emailId).toPromise();
-        emailDetails.push({
-          id: email?.id,
-          subject: this.getHeaderValue(email?.payload?.headers, 'Subject'),
-          // other fields...
+  //   for (const emailId of emailIds) {
+  //     try {
+  //       const email = await this.gmailService.getEmailById(emailId).toPromise();
+  //       const details: EmailDetails = {
+  //         id: email?.id || '',
+  //         historyId: email?.historyId || '',
+  //         internalDate: email?.internalDate || 0,
+  //         labelIds: email?.labelIds || [],
+  //         sizeEstimate: email?.sizeEstimate || 0,
+  //         snippet: email?.snippet || '',
+  //         threadId: email?.threadId || '',
+  //         payload: email?.payload || undefined,
+  //         subject:
+  //           this.getHeaderValue(email?.payload?.headers, 'Subject') || '',
+  //       };
+
+  //       emailDetails.push(details);
+  //       this.store.dispatch(saveEmailDetails({ emailDetails: details }));
+  //       this.store.dispatch(updateEmailInList({ email: details }));
+  //       this.loading = false;
+  //       // Delay between requests (e.g., 500ms)
+  //       await new Promise((resolve) => setTimeout(resolve, 500));
+  //     } catch (error) {
+  //       console.error(
+  //         `Failed to fetch details for email ID: ${emailId}`,
+  //         error
+  //       );
+  //       // Optional: Retry logic can be added here
+  //     }
+  //   }
+
+  //   // this.emails = emailDetails;
+  // }
+
+  fetchEmailDetails(emailIds: string[]) {
+    emailIds.forEach((id) => {
+      // Check if the email details are already in the store
+      this.store
+        .pipe(select(selectEmailDetailsById(id)))
+        .subscribe((details) => {
+          if (!details) {
+            // Fetch details if not already in the store
+            this.gmailService
+              .getEmailById(id)
+              .toPromise()
+              .then((email) => {
+                const emailDetails: EmailDetails = {
+                  id: email?.id || '',
+                  historyId: email?.historyId || '',
+                  internalDate: email?.internalDate || 0,
+                  labelIds: email?.labelIds || [],
+                  sizeEstimate: email?.sizeEstimate || 0,
+                  snippet: email?.snippet || '',
+                  threadId: email?.threadId || '',
+                  subject:
+                    this.getHeaderValue(email?.payload?.headers, 'Subject') ||
+                    '',
+                };
+                this.loading = false;
+                this.store.dispatch(saveEmailDetails({ emailDetails }));
+                this.store.dispatch(updateEmailInList({ email: details }));
+              })
+              .catch((error) =>
+                console.error('Error fetching email details:', error)
+              );
+          }
         });
-        this.emails = emailDetails;
-        this.loading = false;
-        // Delay between requests (e.g., 500ms)
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch (error) {
-        console.error(
-          `Failed to fetch details for email ID: ${emailId}`,
-          error
-        );
-        // Optional: Retry logic can be added here
-      }
-    }
-
-    // this.emails = emailDetails;
+    });
   }
 
   getHeaderValue(headers: any[] | undefined, name: string): string {

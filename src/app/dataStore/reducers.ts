@@ -8,9 +8,9 @@ import {
   loadEmailDetailsSuccess,
   loadEmailDetailsFailure,
   saveEmailDetails,
+  updateEmailInList,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
-
 
 export interface State {
   emails: Email[];
@@ -50,14 +50,28 @@ const _emailReducer = createReducer(
     error,
     loading: false,
   })),
-  on(saveEmailDetails, (state, { emailDetails }) => ({
+  on(saveEmailDetails, (state, { emailDetails }) => {
+    const updatedEmails = state.emails.map((email) =>
+      email.id === emailDetails.id
+        ? { ...email, ...emailDetails, subject: emailDetails.snippet } // Update with new details
+        : email
+    );
+
+    return {
+      ...state,
+      emailDetails: {
+        ...state.emailDetails,
+        [emailDetails.id]: emailDetails,
+      },
+      emails: updatedEmails,
+    };
+  }),
+  on(updateEmailInList, (state, { email }) => ({
     ...state,
-    emailDetails: {
-      ...state.emailDetails,
-      [emailDetails.id]: emailDetails,
-    },
-  })),
-  
+    emails: state.emails.map((e) =>
+      e.id === email.id ? { ...e, ...email } : e
+    ),
+  }))
 );
 
 export function emailReducer(state: State | undefined, action: Action) {

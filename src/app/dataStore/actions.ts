@@ -8,6 +8,10 @@ export const loadEmailsSuccess = createAction(
   '[Email] Load Emails Success',
   props<{ emails: Email[] }>()
 );
+export const updateEmailInList = createAction(
+  '[Email] Update Email In List',
+  props<{ email: Email }>()
+);
 export const loadEmailsFailure = createAction(
   '[Email] Load Emails Failure',
   props<{ error: any }>()
@@ -17,7 +21,7 @@ export const loadEmailDetails = createAction(
   props<{ emailId: string }>()
 );
 export const loadEmailDetailsSuccess = createAction(
-  '[Email] Load Email Details Success',
+  '[EmailDetails] Load Email Details Success',
   props<{ emailDetails: EmailDetails }>()
 );
 export const loadEmailDetailsFailure = createAction(
