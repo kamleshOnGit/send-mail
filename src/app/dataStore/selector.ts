@@ -22,3 +22,35 @@ export const selectEmailDetailsById = (emailId: string) =>
     selectEmailState,
     (state: State) => state.emailDetails[emailId],
   );
+
+  export const selectPaginatedEmails = createSelector(
+    (state: State) => state.emails,
+    (state: State) => state.pagination,
+    (emails, pagination) => {
+      const start = (pagination.currentPage - 1) * pagination.pageSize;
+      const end = start + pagination.pageSize;
+      return emails.slice(start, end);
+    }
+  );
+
+  // Selectors for pagination state
+  export const selectTotalPages = createSelector(
+    (state: State) => state.pagination,
+    (pagination) => Math.ceil(pagination.totalEmails / pagination.pageSize)
+  );
+
+  export const selectCurrentPage = createSelector(
+    (state: State) => state.pagination,
+    (pagination) => pagination.currentPage
+  );
+
+  export const selectHasNextPage = createSelector(
+    selectCurrentPage,
+    selectTotalPages,
+    (currentPage, totalPages) => currentPage < totalPages
+  );
+
+  export const selectHasPrevPage = createSelector(
+    selectCurrentPage,
+    (currentPage) => currentPage > 1
+  );

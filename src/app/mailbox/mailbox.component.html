@@ -1,8 +1,8 @@
 <div class="flex flex-col h-screen justify-between">
   <!-- Header -->
   <app-header></app-header>
-    <div class="flex-grow flex items-center justify-center"> 
-    <!-- Google Sign-In Button -->
+  <!-- <div class="flex-grow flex items-center justify-center"> 
+ 
     <div class="text-start">
      <div *ngIf="loading">Loading emails...</div>
 
@@ -16,8 +16,207 @@
         No emails found.
       </div>
     </div>
-    </div>
-   <!-- Footer -->
-   <app-footer></app-footer>
+    </div> -->
+  <div class="h-100 bg-gray-100 p-4">
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="w-1/6 bg-white shadow-lg p-4">
+        <button
+          class="w-full text-white bg-blue-500 hover:bg-blue-600 rounded-lg py-2 mb-4"
+        >
+          Compose
+        </button>
+        <ul class="space-y-2">
+          <li
+            class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
+          >
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
+            Inbox
+          </li>
+          <li
+            class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
+          >
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M16 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l7-3 7 3z" />
+            </svg>
+            Starred
+          </li>
+          <!-- Add more menu items here -->
+        </ul>
+      </div>
 
+      <!-- Main content -->
+      <div class="w-5/6 ml-4">
+        <!-- Email List -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+          <div class="p-4 border-b">
+            <h2 class="text-lg font-semibold text-gray-800">Emails</h2>
+          </div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-4 px-2">
+              <!-- Select All Checkbox -->
+              <input
+                type="checkbox"
+                class="form-checkbox text-blue-600 h-4 w-4"
+                (change)="selectAllEmails($event)"
+              />
+
+              <!-- Bulk Actions Dropdown -->
+              <div class="relative">
+                <button
+                  class="text-blue-500 hover:underline"
+                  (focus)="showDropdown = true"
+                  (blur)="showDropdown = false"
+                >
+                  Actions
+                </button>
+                <div
+                  *ngIf="showDropdown"
+                  class="absolute left-0 mt-2 w-48 bg-white border rounded shadow-lg"
+                  (mouseenter)="showDropdown = true"
+                  (mouseleave)="showDropdown = false"
+                >
+                  <ul>
+                    <li>
+                      <button
+                        (click)="markSelectedAsRead()"
+                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Mark as Read
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        (click)="markSelectedAsUnread()"
+                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Mark as Unread
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        (click)="markSelectedAsSpam()"
+                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Mark as Spam
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        (click)="deleteSelectedEmails()"
+                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Delete
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        (click)="archiveSelectedEmails()"
+                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Archive
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        (click)="moveSelectedEmails()"
+                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Move to
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- <button class="text-blue-500 hover:underline">Label</button> -->
+            </div>
+          </div>
+
+          <!-- Email List -->
+          <div
+            *ngFor="let email of emails$ | async"
+            class="flex justify-between items-start border-b py-3 px-2"
+          >
+            <!-- Left Side: Star, Email Checkbox, Mark Read/Unread, and Label -->
+            <div class="flex items-center space-x-4 w-1/7">
+              <!-- Individual Email Checkbox -->
+              <input
+                type="checkbox"
+                class="form-checkbox text-blue-600 h-4 w-4"
+                (change)="selectEmail(email.id)"
+              />
+
+              <!-- Star Icon -->
+              <svg
+                (click)="toggleStar(email.id)"
+                class="w-6 h-6 cursor-pointer"
+                [attr.stroke]="email.isStarred ? 'yellow' : 'gray'"
+                fill="none"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.324 7.155h7.516c.969 0 1.371 1.24.588 1.81l-6.067 4.515 2.324 7.155c.3.921-.755 1.688-1.538 1.118l-6.067-4.515-6.067 4.515c-.783.57-1.838-.197-1.538-1.118l2.324-7.155L.617 11.892c-.783-.57-.381-1.81.588-1.81h7.516L11.049 2.927z"
+                />
+              </svg>
+
+              <!-- Email Label -->
+              <span class="text-sm text-gray-600">{{ email.label }}</span>
+            </div>
+
+            <!-- Center: Email Subject -->
+            <div
+              class="flex-grow text-left text-gray-700 font-medium ml-4 cursor-pointer"
+              (click)="viewEmail(email.id)"
+            >
+              {{ email.subject }}
+            </div>
+
+            <!-- Right Side: Email Date -->
+            <div class="text-sm text-gray-500">
+              {{ email.date | date : "short" }}
+            </div>
+          </div>
+          <!-- Pagination -->
+          <div class="p-4 flex justify-between items-center border-t">
+            <button
+              (click)="prevPage()"
+              class="text-blue-500 hover:underline"
+              [disabled]="!hasPrevPage$"
+            >
+              Previous
+            </button>
+            <span class="text-gray-600"
+              >Page {{ currentPage$ }} of {{ totalPages$ }}</span
+            >
+            <button
+              (click)="nextPage()"
+              class="text-blue-500 hover:underline"
+              [disabled]="!hasNextPage$"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <app-footer></app-footer>
 </div>

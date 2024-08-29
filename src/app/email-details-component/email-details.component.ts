@@ -10,7 +10,7 @@ import {
   EmailDetails,
   EmailPart,
 } from '../dataModel/email-details.model';
-import { SafeHtml, DomSanitizer } from '@angular/platform-browser';
+import { SafeHtml, DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import sanitizeHtml from 'sanitize-html';
 import * as he from 'he';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
@@ -31,6 +31,7 @@ export class EmailDetailsComponent implements OnInit {
   subject?: string;
   date?: string;
   bodyContent?: string;
+  bodyContenturl?: SafeResourceUrl;
   loading: boolean = true;
   attachments: any; // Array to hold attachment metadata
   emailDetails$!: Observable<EmailDetails | undefined>;
@@ -38,7 +39,8 @@ export class EmailDetailsComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private gmailService: GmailService,
-    private store: Store
+    private store: Store,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit() {
@@ -50,8 +52,8 @@ export class EmailDetailsComponent implements OnInit {
         // Use cached email details
         this.email = emailDetails;
         this.extractEmailDetails();
-        
-        console.log(this.email)
+
+        console.log(this.email);
       } else {
         // Fetch email details from the API
         // this.fetchEmailDetails(emailId);
@@ -125,9 +127,18 @@ export class EmailDetailsComponent implements OnInit {
         this.email.payload.parts,
         this.email.id
       );
-      this.bodyContent = this.getBodyContent(
-        this.email.payload.parts,
-        this.email.payload.body
+      // this.bodyContent = this.getBodyContent(
+      //   this.email.payload.parts,
+      //   this.email.payload.body
+      // );
+      this.bodyContenturl = this.sanitizer.bypassSecurityTrustResourceUrl(
+        'data:text/html;charset=utf-8,' +
+          encodeURIComponent(
+            this.getBodyContent(
+              this.email.payload.parts,
+              this.email.payload.body
+            )
+          )
       );
       this.loading = false;
     }

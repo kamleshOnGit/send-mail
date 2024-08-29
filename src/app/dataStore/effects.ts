@@ -66,6 +66,9 @@ export class EmailEffects {
                     threadId: email.threadId,
                     subject: '',
                     payload: email?.payload || undefined,
+                    label: '',
+                    date: '',
+                    isStarred: false,
                   },
                 })
               ),

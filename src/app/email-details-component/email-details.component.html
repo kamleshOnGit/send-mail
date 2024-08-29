@@ -6,27 +6,55 @@
     <!-- email-details.component.html -->
 <!-- email-details.component.html -->
 <!-- email-details.component.html -->
-    <div *ngIf="loading">Loading email details...</div>
+   <div class="p-4">
 
-    <div *ngIf="!loading && email">
-    <h2>Email ID: {{ email.id }}</h2>
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center text-gray-500">
+    <p>Loading email details...</p>
+  </div>
+
+  <!-- Email Details -->
+  <div *ngIf="!loading && email" class="max-w-4xl mx-auto bg-white shadow-md rounded-lg p-6">
+    
+    <!-- Email ID -->
+    <h2 class="text-2xl font-semibold mb-4">Email ID: <span class="text-gray-700">{{ email.id }}</span></h2>
+
+    <!-- Email Payload -->
     <div *ngIf="email.payload">
-        <p><strong>From:</strong> {{ from }}</p>
-        <p><strong>Subject:</strong> {{ subject }}</p>
-        <p><strong>Date:</strong> {{ date }}</p>
-         <div *ngIf="attachments.length">
-        <h3>Attachments:</h3>
-        <ul>
-        <li *ngFor="let attachment of attachments">
-            <a [href]="getAttachmentUrl(attachment)" download="{{ attachment.filename }}">
-            {{ attachment.filename }} ({{ attachment.size }} bytes)
+      <!-- Email From -->
+      <p class="text-lg font-medium mb-2"><strong>From:</strong> <span class="text-gray-800">{{ from }}</span></p>
+
+      <!-- Email Subject -->
+      <p class="text-lg font-medium mb-2"><strong>Subject:</strong> <span class="text-gray-800">{{ subject }}</span></p>
+
+      <!-- Email Date -->
+      <p class="text-lg font-medium mb-4"><strong>Date:</strong> <span class="text-gray-600">{{ date }}</span></p>
+
+      <!-- Attachments -->
+      <div *ngIf="attachments.length" class="mb-4">
+        <h3 class="text-xl font-semibold mb-2">Attachments:</h3>
+        <ul class="list-disc list-inside pl-4">
+          <li *ngFor="let attachment of attachments" class="mb-1">
+            <a 
+              [href]="getAttachmentUrl(attachment)" 
+              download="{{ attachment.filename }}" 
+              class="text-blue-600 hover:underline">
+              {{ attachment.filename }} ({{ attachment.size }} bytes)
             </a>
-        </li>
+          </li>
         </ul>
-        </div>
-        <div [innerHTML]="bodyContent"></div>
+      </div>
+
+      <!-- Email Body Content -->
+      <div class="prose prose-sm mt-4">
+        <!-- <div [innerHTML]="bodyContent"></div> -->
+          <iframe [src]="bodyContenturl" class="w-full h-96 border rounded-lg" frameborder="0"></iframe>
+      </div>
+
     </div>
-    </div>
+  </div>
+
+</div>
 
 
 

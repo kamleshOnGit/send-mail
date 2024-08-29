@@ -1,5 +1,8 @@
 // email.model.ts
 export interface Email {
+  date: any;
+  label: any;
+  isStarred: any;
   id: string;
   threadId: string;
   payload?: EmailPayload;
@@ -46,4 +49,7 @@ export interface EmailDetails {
   threadId: string;
   payload?: EmailPayload;
   subject: string;
+  label: any;
+  isStarred: any;
+  date: any;
 }

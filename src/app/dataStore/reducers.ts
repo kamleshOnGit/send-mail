@@ -17,6 +17,11 @@ export interface State {
   emailDetails: { [key: string]: EmailDetails };
   error: any;
   loading: boolean;
+  pagination: {
+    currentPage: number;
+    pageSize: number;
+    totalEmails: number;
+  };
 }
 
 export const initialState: State = {
@@ -24,6 +29,11 @@ export const initialState: State = {
   emailDetails: {},
   error: null,
   loading: false,
+  pagination: {
+    currentPage: 1,
+    pageSize: 10,
+    totalEmails: 0,
+  },
 };
 
 const _emailReducer = createReducer(

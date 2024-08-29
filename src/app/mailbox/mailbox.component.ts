@@ -11,7 +11,11 @@ import { State } from '../dataStore/reducers';
 import {
   loadEmails,
   loadEmailsSuccess,
+  markAsRead,
+  markAsUnread,
+  paginateEmails,
   saveEmailDetails,
+  toggleStar,
   updateEmailInList,
 } from '../dataStore/actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
@@ -19,6 +23,10 @@ import {
   selectHasEmails,
   selectAllEmails,
   selectEmailDetailsById,
+  selectCurrentPage,
+  selectHasNextPage,
+  selectHasPrevPage,
+  selectTotalPages,
 } from '../dataStore/selector';
 
 @Component({
@@ -30,9 +38,39 @@ import {
   imports: [FooterComponent, HeaderComponent, CommonModule],
 })
 export class MailboxComponent {
+  showDropdown: any;
+  moveSelectedEmails() {
+    throw new Error('Method not implemented.');
+  }
+  archiveSelectedEmails() {
+    throw new Error('Method not implemented.');
+  }
+  deleteSelectedEmails() {
+    throw new Error('Method not implemented.');
+  }
+  markSelectedAsSpam() {
+    throw new Error('Method not implemented.');
+  }
+  markSelectedAsUnread() {
+    throw new Error('Method not implemented.');
+  }
+  markSelectedAsRead() {
+    throw new Error('Method not implemented.');
+  }
+  selectAllEmails($event: Event) {
+    throw new Error('Method not implemented.');
+  }
+  selectEmail(arg0: string) {
+    throw new Error('Method not implemented.');
+  }
   loading: boolean = true;
   nextPageToken: any;
   emails$: Observable<Email[]> | undefined;
+  currentPage$: Observable<number> | undefined;
+  totalPages$: Observable<number> | undefined;
+  hasNextPage$: Observable<boolean> | undefined;
+  hasPrevPage$: Observable<boolean> | undefined;
+
   constructor(
     private gmailService: GmailService,
     private router: Router,
@@ -50,6 +88,10 @@ export class MailboxComponent {
       } else {
         // Emails are already loaded
         this.emails$ = this.store.pipe(select(selectAllEmails));
+        this.currentPage$ = this.store.pipe(select(selectCurrentPage));
+        this.totalPages$ = this.store.pipe(select(selectTotalPages));
+        this.hasNextPage$ = this.store.pipe(select(selectHasNextPage));
+        this.hasPrevPage$ = this.store.pipe(select(selectHasPrevPage));
         this.loading = false;
       }
     });
@@ -68,6 +110,31 @@ export class MailboxComponent {
     });
   }
 
+  toggleStar(emailId: string) {
+    this.store.dispatch(toggleStar({ emailId }));
+  }
+
+  markAsRead(emailId: string) {
+    this.store.dispatch(markAsRead({ emailId }));
+  }
+
+  markAsUnread(emailId: string) {
+    this.store.dispatch(markAsUnread({ emailId }));
+  }
+
+  nextPage() {
+    this.store.dispatch(paginateEmails({ direction: 'next' }));
+  }
+
+  prevPage() {
+    this.store.dispatch(paginateEmails({ direction: 'prev' }));
+  }
+
+  toggleDropdown(event: Event) {
+    this.showDropdown = !this.showDropdown;
+    event.stopPropagation();
+  }
+  
   // async fetchEmailDetails(emailIds: string[]): Promise<void> {
   //   const emailDetails: any[] = [];
 
@@ -126,6 +193,9 @@ export class MailboxComponent {
                   snippet: email?.snippet || '',
                   threadId: email?.threadId || '',
                   payload: email?.payload || undefined,
+                  label: '',
+                  date: '',
+                  isStarred: false,
                   subject:
                     this.getHeaderValue(email?.payload?.headers, 'Subject') ||
                     '',

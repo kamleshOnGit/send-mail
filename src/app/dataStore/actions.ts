@@ -34,4 +34,19 @@ export const saveEmailDetails = createAction(
   props<{ emailDetails: EmailDetails }>()
 );
 
- 
+export const toggleStar = createAction(
+  '[Email List] Toggle Star',
+  props<{ emailId: string }>()
+);
+export const markAsRead = createAction(
+  '[Email List] Mark As Read',
+  props<{ emailId: string }>()
+);
+export const markAsUnread = createAction(
+  '[Email List] Mark As Unread',
+  props<{ emailId: string }>()
+);
+export const paginateEmails = createAction(
+  '[Email List] Paginate Emails',
+  props<{ direction: 'next' | 'prev' }>()
+);
