@@ -21,11 +21,11 @@ export class GmailService {
     return this.http.post(url, message, { headers });
   }
 
-  // Method to get user's emails
+  // Method to get user's emails, 50 items per call
   getEmails(nextPageToken?: string): Observable<any> {
-    let url = `${this.apiUrl}users/me/messages`;
+    let url = `${this.apiUrl}users/me/messages?maxResults=50`; // Set maxResults to 50
     if (nextPageToken) {
-      url += `?pageToken=${nextPageToken}`;
+      url += `&pageToken=${nextPageToken}`;
     }
     const headers = new HttpHeaders({
       Authorization: `Bearer ${this.getAccessToken()}`,
@@ -33,6 +33,7 @@ export class GmailService {
     return this.http.get(url, { headers });
   }
 
+  
   // Method to get a specific email by ID
   getEmailById(emailId: string): Observable<EmailDetails> {
     const url = `${this.apiUrl}users/me/messages/${emailId}`;

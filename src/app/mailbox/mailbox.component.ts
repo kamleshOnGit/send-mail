@@ -5,7 +5,7 @@ import { HeaderComponent } from '../shared/header/header.component';
 import { GmailService } from '../services/gmail.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { forkJoin, Observable } from 'rxjs';
+import { forkJoin, Observable, withLatestFrom } from 'rxjs';
 import { select, Store } from '@ngrx/store';
 import { State } from '../dataStore/reducers';
 import {
@@ -16,6 +16,7 @@ import {
   paginateEmails,
   saveEmailDetails,
   toggleStar,
+  updateCurrentPage,
   updateEmailInList,
 } from '../dataStore/actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
@@ -66,7 +67,7 @@ export class MailboxComponent {
   loading: boolean = true;
   nextPageToken: any;
   emails$: Observable<Email[]> | undefined;
-  currentPage$: Observable<number> | undefined;
+  currentPage$!: Observable<number>;
   totalPages$: Observable<number> | undefined;
   hasNextPage$: Observable<boolean> | undefined;
   hasPrevPage$: Observable<boolean> | undefined;
@@ -78,36 +79,45 @@ export class MailboxComponent {
   ) {}
 
   ngOnInit(): void {
-    //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
-    //Add 'implements OnInit' to the class.
-    // this.fetchEmails();
-    this.store.pipe(select(selectAllEmails)).subscribe((emails) => {
-      if (emails.length === 0) {
-        // Dispatch loadEmails action to fetch emails from API
-        this.store.dispatch(loadEmails());
-      } else {
-        // Emails are already loaded
-        this.emails$ = this.store.pipe(select(selectAllEmails));
-        this.currentPage$ = this.store.pipe(select(selectCurrentPage));
-        this.totalPages$ = this.store.pipe(select(selectTotalPages));
-        this.hasNextPage$ = this.store.pipe(select(selectHasNextPage));
-        this.hasPrevPage$ = this.store.pipe(select(selectHasPrevPage));
-        this.loading = false;
-      }
-    });
+    this.store
+      .pipe(
+        select(selectAllEmails),
+        withLatestFrom(this.store.select(selectCurrentPage))
+      )
+      .subscribe(([emails, currentPage]) => {
+        if (emails.length === 0) {
+          // Dispatch loadEmails action with the actual currentPage value
+          this.store.dispatch(loadEmails({ currentPage }));
+        } else {
+          // Emails are already loaded, use the stored values
+          this.emails$ = this.store.pipe(select(selectAllEmails));
+          this.currentPage$ = this.store.pipe(select(selectCurrentPage));
+          this.totalPages$ = this.store.pipe(select(selectTotalPages));
+          this.hasNextPage$ = this.store.pipe(select(selectHasNextPage));
+          this.hasPrevPage$ = this.store.pipe(select(selectHasPrevPage));
+          this.loading = false;
+        }
+      });
   }
 
-  fetchEmails(nextPageToken?: string): void {
-    this.gmailService.getEmails().subscribe((response: any) => {
-      // Check if there is a nextPageToken, and if so, fetch the next page
-      // if (response.nextPageToken) {
-      //   this.fetchEmails(response.nextPageToken);
-      // }
-      this.store.dispatch(loadEmailsSuccess({ emails: response }));
-      this.nextPageToken = response.nextPageToken;
-      const emailIds = response.messages.map((message: any) => message.id);
-      this.fetchEmailDetails(emailIds);
-    });
+  // fetchEmails(nextPageToken?: string): void {
+  //   this.gmailService.getEmails().subscribe((response: any) => {
+  //     // Check if there is a nextPageToken, and if so, fetch the next page
+  //     // if (response.nextPageToken) {
+  //     //   this.fetchEmails(response.nextPageToken);
+  //     // }
+  //     this.store.dispatch(loadEmailsSuccess({ emails: response }));
+  //     this.nextPageToken = response.nextPageToken;
+  //     const emailIds = response.messages.map((message: any) => message.id);
+  //     this.fetchEmailDetails(emailIds);
+  //   });
+  // }
+
+  onPageSelected(page: number): void {
+    this.store.dispatch(updateCurrentPage({ currentPage: page }));
+    this.store.pipe(select(selectCurrentPage)).subscribe((currentPage:number) => {
+      this.store.dispatch(loadEmails({currentPage}));
+    })
   }
 
   toggleStar(emailId: string) {
@@ -134,7 +144,7 @@ export class MailboxComponent {
     this.showDropdown = !this.showDropdown;
     event.stopPropagation();
   }
-  
+
   // async fetchEmailDetails(emailIds: string[]): Promise<void> {
   //   const emailDetails: any[] = [];
 

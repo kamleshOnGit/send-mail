@@ -202,7 +202,7 @@
               Previous
             </button>
             <span class="text-gray-600"
-              >Page {{ currentPage$ }} of {{ totalPages$ }}</span
+              >Page {{ currentPage$ | async}} of {{ totalPages$ | async }}</span
             >
             <button
               (click)="nextPage()"

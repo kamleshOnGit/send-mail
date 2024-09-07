@@ -9,6 +9,8 @@ import {
   loadEmailDetailsFailure,
   saveEmailDetails,
   updateEmailInList,
+  updateCurrentPage,
+  paginateEmails,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -21,6 +23,10 @@ export interface State {
     currentPage: number;
     pageSize: number;
     totalEmails: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+    nextPageToken?: string;
+    prevPageToken?:string
   };
 }
 
@@ -31,19 +37,68 @@ export const initialState: State = {
   loading: false,
   pagination: {
     currentPage: 1,
-    pageSize: 10,
+    pageSize: 50,
     totalEmails: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+    nextPageToken: undefined,
+    prevPageToken: undefined,
   },
 };
 
 const _emailReducer = createReducer(
   initialState,
   on(loadEmails, (state) => ({ ...state, loading: true })),
-  on(loadEmailsSuccess, (state, { emails }) => ({
+  on(
+    loadEmailsSuccess,
+    (
+      state,
+      {
+        emails,
+        currentPage,
+        totalEmails,
+        hasNextPage,
+        hasPrevPage,
+        nextPageToken,
+        prevPageToken,
+      }
+    ) => ({
+      ...state,
+      emails,
+      pagination: {
+        ...state.pagination,
+        currentPage,
+        totalEmails,
+        hasNextPage,
+        hasPrevPage,
+        nextPageToken,
+        prevPageToken,
+      },
+      loading: false,
+    })
+  ),
+  on(updateCurrentPage, (state, { currentPage }) => ({
     ...state,
-    emails,
-    loading: false,
+    pagination: {
+      ...state.pagination,
+      currentPage,
+    },
   })),
+
+  on(paginateEmails, (state, { direction }) => {
+    const newPage =
+      direction === 'next'
+        ? state.pagination.currentPage + 1
+        : state.pagination.currentPage - 1;
+
+    return {
+      ...state,
+      pagination: {
+        ...state.pagination,
+        currentPage: newPage,
+      },
+    };
+  }),
   on(loadEmailsFailure, (state, { error }) => ({
     ...state,
     error,

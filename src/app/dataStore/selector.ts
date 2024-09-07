@@ -1,9 +1,11 @@
 // email.selectors.ts
+
 import { createSelector, createFeatureSelector } from '@ngrx/store';
 import { State } from './reducers';
-import { Email, EmailDetails } from '../dataModel/email-details.model';
+import { Email } from '../dataModel/email-details.model';
 
 export const selectEmailState = createFeatureSelector<State>('email');
+
 // Selector to fetch all emails
 export const selectAllEmails = createSelector(
   selectEmailState,
@@ -20,37 +22,64 @@ export const selectHasEmails = createSelector(
 export const selectEmailDetailsById = (emailId: string) =>
   createSelector(
     selectEmailState,
-    (state: State) => state.emailDetails[emailId],
+    (state: State) => state.emailDetails[emailId]
   );
 
-  export const selectPaginatedEmails = createSelector(
-    (state: State) => state.emails,
-    (state: State) => state.pagination,
-    (emails, pagination) => {
-      const start = (pagination.currentPage - 1) * pagination.pageSize;
-      const end = start + pagination.pageSize;
-      return emails.slice(start, end);
-    }
-  );
+// Selector to get pagination state
+export const selectPagination = createSelector(
+  selectEmailState,
+  (state: State) => state.pagination
+);
 
-  // Selectors for pagination state
-  export const selectTotalPages = createSelector(
-    (state: State) => state.pagination,
-    (pagination) => Math.ceil(pagination.totalEmails / pagination.pageSize)
-  );
+// Selector to get paginated emails
+export const selectPaginatedEmails = createSelector(
+  selectAllEmails,
+  selectPagination,
+  (emails, pagination) => {
+    if (!pagination) return emails; // Handle case where pagination might be undefined
+    const start = (pagination.currentPage - 1) * pagination.pageSize;
+    const end = start + pagination.pageSize;
+    return emails.slice(start, end);
+  }
+);
 
-  export const selectCurrentPage = createSelector(
-    (state: State) => state.pagination,
-    (pagination) => pagination.currentPage
-  );
+// Selectors for pagination state
+export const selectTotalPages = createSelector(
+  selectPagination,
+  (pagination) => {
+    if (!pagination) return 0; // Handle case where pagination might be undefined
+    return Math.ceil(pagination.totalEmails / pagination.pageSize);
+  }
+);
 
-  export const selectHasNextPage = createSelector(
-    selectCurrentPage,
-    selectTotalPages,
-    (currentPage, totalPages) => currentPage < totalPages
-  );
+export const selectCurrentPage = createSelector(
+  selectPagination,
+  (pagination) => (pagination ? pagination.currentPage : 1) // Default to 1 if pagination is undefined
+);
 
-  export const selectHasPrevPage = createSelector(
-    selectCurrentPage,
-    (currentPage) => currentPage > 1
-  );
+export const selectHasNextPage = createSelector(
+  selectCurrentPage,
+  selectTotalPages,
+  (currentPage, totalPages) => currentPage < totalPages
+);
+
+export const selectHasPrevPage = createSelector(
+  selectCurrentPage,
+  (currentPage) => currentPage > 1
+);
+
+export const getCurrentPage = createSelector(
+  selectPagination,
+  (pagination) => (pagination ? pagination.currentPage : 1) // Default to 1 if pagination is undefined
+);
+
+// Selectors for pagination state
+export const selectNextPageToken = createSelector(
+  selectEmailState,
+  (state: State) => state.pagination.nextPageToken
+);
+
+export const selectPrevPageToken = createSelector(
+  selectEmailState,
+  (state: State) => state.pagination.prevPageToken
+);

@@ -2,11 +2,27 @@
 import { createAction, props } from '@ngrx/store';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
+export const loadEmails = createAction(
+  '[Email] Load Emails',
+  props<{ currentPage: number; pageToken?: string }>()
+);
 
-export const loadEmails = createAction('[Email] Load Emails');
+export const updateCurrentPage = createAction(
+  '[Email] Update Current Page',
+  props<{ currentPage: number }>()
+);
+
 export const loadEmailsSuccess = createAction(
   '[Email] Load Emails Success',
-  props<{ emails: Email[] }>()
+  props<{
+    emails: Email[];
+    currentPage: number;
+    totalEmails: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+    nextPageToken?: string;
+    prevPageToken?: string;
+  }>()
 );
 export const updateEmailInList = createAction(
   '[Email] Update Email In List',
