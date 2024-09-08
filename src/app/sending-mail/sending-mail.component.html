@@ -2,12 +2,127 @@
   <!-- Header -->
   <app-header></app-header>
   <div class="flex-grow flex items-center justify-center">
-    <!-- Google Sign-In Button -->
-    <div class="text-center">
-     <p> Sending mail.</p>
-    </div>
-   </div>
-   <!-- Footer -->
-   <app-footer></app-footer>
+    <div class="container mx-auto mt-6 max-w-7xl">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Email Sending Box (Wider) -->
+        <div class="lg:col-span-2 bg-white shadow-md rounded-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Compose Email
+          </h2>
+          <form>
+            <!-- Sender Address -->
+            <div class="mb-4">
+              <label
+                for="senderEmail"
+                class="block text-sm font-medium text-gray-700"
+                >From</label
+              >
+              <input
+                type="email"
+                id="senderEmail"
+                name="senderEmail"
+                [(ngModel)]="senderEmail"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter your email"
+              />
+            </div>
 
+            <!-- Recipient Address -->
+            <div class="mb-4">
+              <label
+                for="recipientEmail"
+                class="block text-sm font-medium text-gray-700"
+                >To</label
+              >
+              <input
+                type="email"
+                id="recipientEmail"
+                name="recipientEmail"
+                [(ngModel)]="recipientEmail"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter recipient email"
+              />
+            </div>
+
+            <!-- Subject -->
+            <div class="mb-4">
+              <label
+                for="emailSubject"
+                class="block text-sm font-medium text-gray-700"
+                >Subject</label
+              >
+              <input
+                type="text"
+                id="emailSubject"
+                name="emailSubject"
+                [(ngModel)]="emailSubject"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter subject"
+              />
+            </div>
+
+            <!-- Email Body -->
+            <div class="mb-4">
+              <label
+                for="emailBody"
+                class="block text-sm font-medium text-gray-700"
+                >Message</label
+              >
+              <textarea
+                id="emailBody"
+                rows="6"
+                name="emailBody"
+                [(ngModel)]="emailBody"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter your message"
+              ></textarea>
+            </div>
+
+            <!-- Send Button -->
+            <div class="mt-4">
+              <button
+                type="button"
+                class="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
+              >
+                Send
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Google Sheets Input Section (Narrower) -->
+        <div class="lg:col-span-1 bg-white shadow-md rounded-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Import from Google Sheets
+          </h2>
+          <div class="mb-4">
+            <label
+              for="googleSheetURL"
+              class="block text-sm font-medium text-gray-700"
+              >Google Sheet URL</label
+            >
+            <input
+              type="url"
+              id="googleSheetURL" name="spreadsheetId"
+              [(ngModel)]="spreadsheetUrl" (input)="extractSheetId(spreadsheetUrl)" 
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Enter Google Sheet URL"
+            />
+          </div>
+
+          <div class="mt-4">
+            <button
+              type="button"
+              (click)="loadSheetData()"
+              class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              Load Data
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Footer -->
+  <app-footer></app-footer>
 </div>

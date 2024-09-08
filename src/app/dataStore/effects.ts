@@ -2,7 +2,13 @@
 import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { from, of } from 'rxjs';
-import { catchError, map, mergeMap, switchMap, withLatestFrom } from 'rxjs/operators';
+import {
+  catchError,
+  map,
+  mergeMap,
+  switchMap,
+  withLatestFrom,
+} from 'rxjs/operators';
 
 import {
   loadEmails,
@@ -13,11 +19,15 @@ import {
   loadEmailDetailsFailure,
   saveEmailDetails,
   paginateEmails,
-
 } from './actions';
 
 import { GmailService } from '../services/gmail.service';
-import { getCurrentPage, selectCurrentPage, selectNextPageToken, selectPrevPageToken } from './selector';
+import {
+  getCurrentPage,
+  selectCurrentPage,
+  selectNextPageToken,
+  selectPrevPageToken,
+} from './selector';
 import { select, Store } from '@ngrx/store';
 import { State } from './reducers';
 
@@ -72,12 +82,10 @@ export class EmailEffects {
         this.store.pipe(select(selectPrevPageToken))
       ),
       switchMap(([action, currentPage, nextPageToken, prevPageToken]) => {
-        const newPage =
-          action.direction === 'next' ? currentPage + 1 : currentPage - 1;
         const pageToken =
           action.direction === 'next' ? nextPageToken : prevPageToken;
 
-        return of(loadEmails({ currentPage: newPage, pageToken }));
+        return of(loadEmails({ currentPage, pageToken }));
       })
     )
   );

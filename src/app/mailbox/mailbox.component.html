@@ -197,17 +197,18 @@
             <button
               (click)="prevPage()"
               class="text-blue-500 hover:underline"
-              [disabled]="!hasPrevPage$"
+              [disabled]="!(hasPrevPage$ | async)"
             >
               Previous
             </button>
             <span class="text-gray-600"
-              >Page {{ currentPage$ | async}} of {{ totalPages$ | async }}</span
+              >Page {{ currentPage$ | async }} of
+              {{ totalPages$ | async }}</span
             >
             <button
               (click)="nextPage()"
               class="text-blue-500 hover:underline"
-              [disabled]="!hasNextPage$"
+              [disabled]="!(hasNextPage$ | async)"
             >
               Next
             </button>

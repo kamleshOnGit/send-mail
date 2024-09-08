@@ -43,10 +43,11 @@ export class LoginComponent {
       redirect_uri: 'http://localhost:4200/auth-callback', // Make sure this matches your Google Cloud Console settings
       response_type: 'token',
       discoveryDocs: [
-        'https://sheets.googleapis.com/$discovery/rest?version=v4'
+        'https://sheets.googleapis.com/$discovery/rest?version=v4',
+        'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest',
       ],
       scope:
-        'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
+        'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
       include_granted_scopes: 'true',
       state: 'pass-through value', // Optional: can be used to pass state information
     };

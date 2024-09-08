@@ -8,17 +8,68 @@ import { Email, EmailDetails } from '../dataModel/email-details.model';
 })
 export class GmailService {
   private apiUrl = 'https://www.googleapis.com/gmail/v1/';
+  private sheetsApiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/';
 
   constructor(private http: HttpClient) {}
 
+  // Method to create the MIME email message and encode it
+  private createEmailMessage(
+    recipient: string,
+    subject: string,
+    body: string
+  ): string {
+    const emailLines = [
+      `To: ${recipient}`,
+      `Subject: ${subject}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: 7bit',
+      '',
+      body,
+    ].join('\n');
+
+    // Encode the MIME message in base64url format
+    const encodedEmail = this.base64UrlEncode(emailLines);
+
+    return encodedEmail;
+  }
+
+  // Helper method to encode a string to base64url format
+  private base64UrlEncode(input: string): string {
+    return btoa(unescape(encodeURIComponent(input)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+  }
+
   // Method to send an email
-  sendEmail(message: any): Observable<any> {
+  sendEmail(
+    sender: string,
+    recipient: string,
+    subject: string,
+    body: string
+  ): Observable<any> {
     const url = `${this.apiUrl}users/me/messages/send`;
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.getAccessToken()}`,
+      Authorization: `Bearer ${this.getAccessToken()}`, // Assumes you have a method to get the access token
     });
-    return this.http.post(url, message, { headers });
+
+    // Create email message payload
+    const emailMessage = this.createEmailMessage(recipient, subject, body);
+
+    // Send the POST request with the encoded email message
+    return this.http.post(url, { raw: emailMessage }, { headers });
+  }
+
+  // Method to get Google Sheets data
+  getSheetData(spreadsheetId: string, range: string): Observable<any> {
+    const url = `${this.sheetsApiUrl}${spreadsheetId}/values/${range}`;
+
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${this.getAccessToken()}`, // Assumes you have a method to get the access token
+    });
+
+    return this.http.get(url, { headers });
   }
 
   // Method to get user's emails, 50 items per call
@@ -33,7 +84,6 @@ export class GmailService {
     return this.http.get(url, { headers });
   }
 
-  
   // Method to get a specific email by ID
   getEmailById(emailId: string): Observable<EmailDetails> {
     const url = `${this.apiUrl}users/me/messages/${emailId}`;
