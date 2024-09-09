@@ -11,6 +11,12 @@ import {
   updateEmailInList,
   updateCurrentPage,
   paginateEmails,
+  loadSheetData,
+  loadSheetDataFailure,
+  loadSheetDataSuccess,
+  sendEmail,
+  sendEmailFailure,
+  sendEmailSuccess,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -19,6 +25,8 @@ export interface State {
   emailDetails: { [key: string]: EmailDetails };
   error: any;
   loading: boolean;
+  sheetData: string[][]; // Added to store sheet data rows
+  emailSendingStatus: { [key: string]: string }; // Added to store the status of each email sent (success or failure)
   pagination: {
     currentPage: number;
     pageSize: number;
@@ -26,7 +34,7 @@ export interface State {
     hasNextPage: boolean;
     hasPrevPage: boolean;
     nextPageToken?: string;
-    prevPageToken?:string
+    prevPageToken?: string;
   };
 }
 
@@ -35,6 +43,8 @@ export const initialState: State = {
   emailDetails: {},
   error: null,
   loading: false,
+  sheetData: [], // Initialize empty sheet data
+  emailSendingStatus: {}, // Initialize an empty email status object
   pagination: {
     currentPage: 1,
     pageSize: 50,
@@ -136,6 +146,46 @@ const _emailReducer = createReducer(
     emails: state.emails.map((e) =>
       e.id === email.id ? { ...e, ...email } : e
     ),
+  })),
+  // Sheet Data Loading Reducers
+  on(loadSheetData, (state) => ({
+    ...state,
+    loading: true,
+    error: null,
+  })),
+  on(loadSheetDataSuccess, (state, { rows }) => ({
+    ...state,
+    loading: false,
+    sheetData: rows, // Store fetched sheet data
+  })),
+  on(loadSheetDataFailure, (state, { error }) => ({
+    ...state,
+    loading: false,
+    error,
+  })),
+
+  // Email Sending Reducers
+  on(sendEmail, (state, { sender, recipient }) => ({
+    ...state,
+    emailSendingStatus: {
+      ...state.emailSendingStatus,
+      [`${sender}_${recipient}`]: 'sending', // Track sending status
+    },
+  })),
+  on(sendEmailSuccess, (state, { sender, recipient }) => ({
+    ...state,
+    emailSendingStatus: {
+      ...state.emailSendingStatus,
+      [`${sender}_${recipient}`]: 'success', // Track success status
+    },
+  })),
+  on(sendEmailFailure, (state, { sender, recipient, error }) => ({
+    ...state,
+    emailSendingStatus: {
+      ...state.emailSendingStatus,
+      [`${sender}_${recipient}`]: 'failure', // Track failure status
+    },
+    error,
   }))
 );
 

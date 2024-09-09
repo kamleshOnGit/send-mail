@@ -66,3 +66,34 @@ export const paginateEmails = createAction(
   '[Email List] Paginate Emails',
   props<{ direction: 'next' | 'prev' }>()
 );
+
+export const loadSheetData = createAction(
+  '[Sheet] Load Sheet Data',
+  props<{ spreadsheetId: string; sheetRange: string }>()
+);
+
+export const loadSheetDataSuccess = createAction(
+  '[Sheet] Load Sheet Data Success',
+  props<{ rows: string[][] }>()
+);
+
+export const loadSheetDataFailure = createAction(
+  '[Sheet] Load Sheet Data Failure',
+  props<{ error: any }>()
+);
+
+// Send email actions
+export const sendEmail = createAction(
+  '[Email] Send Email',
+  props<{ sender: string; recipient: string; subject: string; body: string }>()
+);
+
+export const sendEmailSuccess = createAction(
+  '[Email] Send Email Success',
+  props<{ sender: string; recipient: string }>()
+);
+
+export const sendEmailFailure = createAction(
+  '[Email] Send Email Failure',
+  props<{ sender: string; recipient: string; error: any }>()
+);

@@ -83,3 +83,15 @@ export const selectPrevPageToken = createSelector(
   selectEmailState,
   (state: State) => state.pagination.prevPageToken
 );
+
+// Select sheet data
+export const selectSheetData = createSelector(
+  selectEmailState,
+  (state: State) => state.sheetData
+);
+
+// Select email sending status
+export const selectEmailSendingStatus = createSelector(
+  selectEmailState,
+  (state: State) => state.emailSendingStatus
+);

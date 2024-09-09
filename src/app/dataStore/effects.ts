@@ -19,6 +19,12 @@ import {
   loadEmailDetailsFailure,
   saveEmailDetails,
   paginateEmails,
+  loadSheetData,
+  sendEmail,
+  loadSheetDataSuccess,
+  loadSheetDataFailure,
+  sendEmailSuccess,
+  sendEmailFailure,
 } from './actions';
 
 import { GmailService } from '../services/gmail.service';
@@ -136,6 +142,33 @@ export class EmailEffects {
           )
         );
       })
+    )
+  );
+  // Effect to load sheet data
+  loadSheetData$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(loadSheetData),
+      mergeMap(({ spreadsheetId, sheetRange }) =>
+        this.gmailService.getSheetData(spreadsheetId, sheetRange).pipe(
+          map((response) => loadSheetDataSuccess({ rows: response.values })),
+          catchError((error) => of(loadSheetDataFailure({ error })))
+        )
+      )
+    )
+  );
+
+  // Effect to send emails
+  sendEmail$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(sendEmail),
+      mergeMap(({ sender, recipient, subject, body }) =>
+        this.gmailService.sendEmail(sender, recipient, subject, body).pipe(
+          map(() => sendEmailSuccess({ sender, recipient })),
+          catchError((error) =>
+            of(sendEmailFailure({ sender, recipient, error }))
+          )
+        )
+      )
     )
   );
 }
