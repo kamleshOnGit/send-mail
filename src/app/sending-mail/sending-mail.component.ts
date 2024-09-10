@@ -4,10 +4,10 @@ import { FooterComponent } from '../shared/footer/footer.component';
 import { GmailService } from '../services/gmail.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { concatMap, delay, from, of } from 'rxjs';
+import { concatMap, delay, from, Observable, of } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { loadSheetData, sendEmail } from '../dataStore/actions';
-import { selectEmailSendingStatus, selectSheetData } from '../dataStore/selector';
+import { selectEmailSendingStatus, selectLoadingSheetData, selectSendingEmail, selectSheetData } from '../dataStore/selector';
 
 @Component({
   selector: 'app-sending-mail',
@@ -24,12 +24,21 @@ export class SendingMailComponent {
   spreadsheetId = ''; // The Google Spreadsheet ID
   spreadsheetUrl = ''; // The Google Spreadsheet ID
   sheetRange = 'Mailing!A2:D'; // Assuming columns are in A2:D (Sender, Recipient, Subject, Body)
+  loadingSheetData$: Observable<boolean> | undefined;
+  sendingEmail$: Observable<boolean> | undefined;
+  emailSendingStatus$: Observable<{ [key: string]: string }> | undefined;
+  sheetData$: Observable<string[][]> | undefined;
+  
   constructor(private gmailService: GmailService, private store: Store) {}
 
   ngOnInit(): void {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     //Add 'implements OnInit' to the class.
     // Subscribe to sheet data in the component
+    this.sheetData$ = this.store.select(selectSheetData);
+    this.loadingSheetData$ = this.store.select(selectLoadingSheetData);
+    this.sendingEmail$ = this.store.select(selectSendingEmail);
+    this.emailSendingStatus$ = this.store.select(selectEmailSendingStatus);
     this.store.select(selectSheetData).subscribe((rows) => {
       if (rows && rows.length) {
         from(rows)
@@ -39,10 +48,10 @@ export class SendingMailComponent {
                 const [sender, recipient, subject, body] = row;
 
                 // Update compose box fields
-                   this.senderEmail = sender;
-                   this.recipientEmail = recipient;
-                   this.emailSubject = subject;
-                   this.emailBody = body;
+                this.senderEmail = sender;
+                this.recipientEmail = recipient;
+                this.emailSubject = subject;
+                this.emailBody = body;
 
                 // Simulate a random delay between 3 and 10 minutes
                 const delayTime = this.getRandomDelay();
@@ -72,8 +81,6 @@ export class SendingMailComponent {
     this.store.select(selectEmailSendingStatus).subscribe((status) => {
       console.log('Email sending status:', status);
     });
-
-
   }
 
   extractSheetId(url: string): void {

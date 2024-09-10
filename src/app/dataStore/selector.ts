@@ -95,3 +95,13 @@ export const selectEmailSendingStatus = createSelector(
   selectEmailState,
   (state: State) => state.emailSendingStatus
 );
+
+export const selectLoadingSheetData = createSelector(
+  selectEmailState,
+  (state: State) => state.loadingSheetData
+);
+
+export const selectSendingEmail = createSelector(
+  selectEmailState,
+  (state: State) => state.sendingEmail
+);

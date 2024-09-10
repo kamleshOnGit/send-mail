@@ -4,9 +4,11 @@ import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { from, of } from 'rxjs';
 import {
   catchError,
+  finalize,
   map,
   mergeMap,
   switchMap,
+  tap,
   withLatestFrom,
 } from 'rxjs/operators';
 
@@ -25,6 +27,10 @@ import {
   loadSheetDataFailure,
   sendEmailSuccess,
   sendEmailFailure,
+  startLoadingSheetData,
+  stopLoadingSheetData,
+  startSendingEmail,
+  stopSendingEmail,
 } from './actions';
 
 import { GmailService } from '../services/gmail.service';
@@ -148,10 +154,12 @@ export class EmailEffects {
   loadSheetData$ = createEffect(() =>
     this.actions$.pipe(
       ofType(loadSheetData),
+      tap(() => this.store.dispatch(startLoadingSheetData())), // Start loader
       mergeMap(({ spreadsheetId, sheetRange }) =>
         this.gmailService.getSheetData(spreadsheetId, sheetRange).pipe(
           map((response) => loadSheetDataSuccess({ rows: response.values })),
-          catchError((error) => of(loadSheetDataFailure({ error })))
+          catchError((error) => of(loadSheetDataFailure({ error }))),
+          finalize(() => this.store.dispatch(stopLoadingSheetData())) // Stop loader
         )
       )
     )
@@ -161,12 +169,14 @@ export class EmailEffects {
   sendEmail$ = createEffect(() =>
     this.actions$.pipe(
       ofType(sendEmail),
+      tap(() => this.store.dispatch(startSendingEmail())), // Start loader
       mergeMap(({ sender, recipient, subject, body }) =>
         this.gmailService.sendEmail(sender, recipient, subject, body).pipe(
           map(() => sendEmailSuccess({ sender, recipient })),
           catchError((error) =>
             of(sendEmailFailure({ sender, recipient, error }))
-          )
+          ),
+        finalize(() => this.store.dispatch(stopSendingEmail())) // Stop loader
         )
       )
     )

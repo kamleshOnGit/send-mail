@@ -97,3 +97,14 @@ export const sendEmailFailure = createAction(
   '[Email] Send Email Failure',
   props<{ sender: string; recipient: string; error: any }>()
 );
+
+
+export const startLoadingSheetData = createAction(
+  '[Email] Start Loading Sheet Data'
+);
+export const stopLoadingSheetData = createAction(
+  '[Email] Stop Loading Sheet Data'
+);
+
+export const startSendingEmail = createAction('[Email] Start Sending Email');
+export const stopSendingEmail = createAction('[Email] Stop Sending Email');

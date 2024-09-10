@@ -1,4 +1,70 @@
 <div class="flex flex-col h-screen justify-between">
+  <!-- Full-Screen Loader for Fetching Sheet Data -->
+  <div
+    *ngIf="loadingSheetData$ | async"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+  >
+    <div class="loader text-lg text-center">
+      <div class="mb-4">
+        <!-- Spinner -->
+        <svg
+          class="animate-spin h-10 w-10 text-white ms-auto me-auto"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
+      <p class="text-white">Fetching sheet data, please wait...</p>
+    </div>
+  </div>
+
+  <!-- Full-Screen Loader for Sending Emails -->
+  <div
+    *ngIf="sendingEmail$ | async"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+  >
+    <div class="loader text-lg">
+      <div class="mb-4">
+        <!-- Spinner -->
+        <svg
+          class="animate-spin h-10 w-10 text-white ms-auto me-auto"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
+      <p class="text-white">Sending emails, please wait...</p>
+    </div>
+  </div>
+
   <!-- Header -->
   <app-header></app-header>
   <div class="flex-grow flex items-center justify-center">
@@ -81,7 +147,8 @@
             <!-- Send Button -->
             <div class="mt-4">
               <button
-                type="button" [disabled]="true"
+                type="submit"
+                [disabled]="true"
                 class="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
               >
                 Send
@@ -103,8 +170,10 @@
             >
             <input
               type="url"
-              id="googleSheetURL" name="spreadsheetId"
-              [(ngModel)]="spreadsheetUrl" (input)="extractSheetId(spreadsheetUrl)" 
+              id="googleSheetURL"
+              name="spreadsheetId"
+              [(ngModel)]="spreadsheetUrl"
+              (input)="extractSheetId(spreadsheetUrl)"
               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="Enter Google Sheet URL"
             />
@@ -113,12 +182,34 @@
           <div class="mt-4">
             <button
               type="button"
-              (click)="loadSheetData(spreadsheetId,sheetRange)"
+              (click)="loadSheetData(spreadsheetId, sheetRange)"
               class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
               Load Data & Send Mail
             </button>
           </div>
+          <!-- Show status for each sent email -->
+        <div *ngIf="(emailSendingStatus$ | async) as emailStatus" class="flex items-center mt-4 flex-col ">
+          <ng-container  *ngFor="let row of sheetData$ | async ;let i = index ">
+          <!-- Adjust each row to take full width and display elements in a block style -->
+      <div class="w-full bg-white p-4 rounded-md shadow mb-4">
+        <div class="flex items-center">
+          <!-- Email icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500 mr-2 border-1 " viewBox="0 0 24 24" fill="none" stroke="#000000">
+          <path stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+          
+          <!-- Status message for each email -->
+          <p class="text-lg" [ngClass]="{
+            'text-green-500': emailStatus[row[1]] === 'success',
+            'text-red-500': emailStatus[row[1]] === 'error'
+          }">
+            {{ row[1] }} - {{ emailStatus[row[1]] === 'success' ? 'Email Sent Successfully' : 'Failed to Send Email' }}
+          </p>
+        </div>
+      </div>
+          </ng-container>
+        </div>
         </div>
       </div>
     </div>

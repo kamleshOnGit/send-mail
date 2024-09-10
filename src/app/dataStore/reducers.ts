@@ -17,6 +17,10 @@ import {
   sendEmail,
   sendEmailFailure,
   sendEmailSuccess,
+  startLoadingSheetData,
+  startSendingEmail,
+  stopLoadingSheetData,
+  stopSendingEmail,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -25,6 +29,8 @@ export interface State {
   emailDetails: { [key: string]: EmailDetails };
   error: any;
   loading: boolean;
+  loadingSheetData: boolean; // New loading state for fetching sheet data
+  sendingEmail: boolean; // New loading state for sending emails
   sheetData: string[][]; // Added to store sheet data rows
   emailSendingStatus: { [key: string]: string }; // Added to store the status of each email sent (success or failure)
   pagination: {
@@ -43,6 +49,8 @@ export const initialState: State = {
   emailDetails: {},
   error: null,
   loading: false,
+  loadingSheetData: false, // Default to false
+  sendingEmail: false, // Default to false
   sheetData: [], // Initialize empty sheet data
   emailSendingStatus: {}, // Initialize an empty email status object
   pagination: {
@@ -174,20 +182,39 @@ const _emailReducer = createReducer(
   })),
   on(sendEmailSuccess, (state, { sender, recipient }) => ({
     ...state,
+    sendingEmail: false,
     emailSendingStatus: {
       ...state.emailSendingStatus,
-      [`${sender}_${recipient}`]: 'success', // Track success status
+      [recipient]: 'success',
     },
   })),
   on(sendEmailFailure, (state, { sender, recipient, error }) => ({
     ...state,
+    sendingEmail: false,
     emailSendingStatus: {
       ...state.emailSendingStatus,
-      [`${sender}_${recipient}`]: 'failure', // Track failure status
+      [recipient]: 'error',
     },
     error,
+  })),
+  on(startLoadingSheetData, (state) => ({
+    ...state,
+    loadingSheetData: true,
+  })),
+  on(stopLoadingSheetData, (state) => ({
+    ...state,
+    loadingSheetData: false,
+  })),
+  on(startSendingEmail, (state) => ({
+    ...state,
+    sendingEmail: true,
+  })),
+  on(stopSendingEmail, (state) => ({
+    ...state,
+    sendingEmail: false,
   }))
 );
+
 
 export function emailReducer(state: State | undefined, action: Action) {
   return _emailReducer(state, action);
