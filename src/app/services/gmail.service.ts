@@ -72,6 +72,22 @@ export class GmailService {
     return this.http.get(url, { headers });
   }
 
+  updateSheetData(
+    spreadsheetId: string,
+    range: string,
+    body: any
+  ): Observable<any> {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`;
+
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${this.getAccessToken()}`, // Include access token in Authorization header
+      'Content-Type': 'application/json',
+    });
+
+    return this.http.put(url, body, { headers })
+  
+  }
+
   // Method to get user's emails, 50 items per call
   getEmails(nextPageToken?: string): Observable<any> {
     let url = `${this.apiUrl}users/me/messages?maxResults=50`; // Set maxResults to 50

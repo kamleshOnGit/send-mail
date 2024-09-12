@@ -108,3 +108,8 @@ export const stopLoadingSheetData = createAction(
 
 export const startSendingEmail = createAction('[Email] Start Sending Email');
 export const stopSendingEmail = createAction('[Email] Stop Sending Email');
+
+export const setEmailSendingStatus = createAction(
+  '[Email] update email sending status',
+  props<{ rowId :string,status:string}>()
+);

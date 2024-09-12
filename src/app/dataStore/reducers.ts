@@ -21,6 +21,7 @@ import {
   startSendingEmail,
   stopLoadingSheetData,
   stopSendingEmail,
+  setEmailSendingStatus,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -177,7 +178,7 @@ const _emailReducer = createReducer(
     ...state,
     emailSendingStatus: {
       ...state.emailSendingStatus,
-      [`${sender}_${recipient}`]: 'sending', // Track sending status
+      [recipient]: 'sending', // Track sending status
     },
   })),
   on(sendEmailSuccess, (state, { sender, recipient }) => ({
@@ -212,6 +213,13 @@ const _emailReducer = createReducer(
   on(stopSendingEmail, (state) => ({
     ...state,
     sendingEmail: false,
+  })),
+  on(setEmailSendingStatus, (state,{rowId, status})=> ({
+    ...state,
+    emailSendingStatus: {
+      ...state.emailSendingStatus,
+      [rowId]: status,
+    },
   }))
 );
 

@@ -6,8 +6,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { concatMap, delay, from, Observable, of } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { loadSheetData, sendEmail } from '../dataStore/actions';
-import { selectEmailSendingStatus, selectLoadingSheetData, selectSendingEmail, selectSheetData } from '../dataStore/selector';
+import {
+  loadSheetData,
+  sendEmail,
+  setEmailSendingStatus,
+} from '../dataStore/actions';
+import {
+  selectEmailSendingStatus,
+  selectLoadingSheetData,
+  selectSendingEmail,
+  selectSheetData,
+} from '../dataStore/selector';
 
 @Component({
   selector: 'app-sending-mail',
@@ -28,7 +37,7 @@ export class SendingMailComponent {
   sendingEmail$: Observable<boolean> | undefined;
   emailSendingStatus$: Observable<{ [key: string]: string }> | undefined;
   sheetData$: Observable<string[][]> | undefined;
-  
+
   constructor(private gmailService: GmailService, private store: Store) {}
 
   ngOnInit(): void {
@@ -43,7 +52,7 @@ export class SendingMailComponent {
       if (rows && rows.length) {
         from(rows)
           .pipe(
-            concatMap((row: any) => {
+            concatMap((row: any, i: number) => {
               if (row.length >= 4) {
                 const [sender, recipient, subject, body] = row;
 
@@ -52,7 +61,9 @@ export class SendingMailComponent {
                 this.recipientEmail = recipient;
                 this.emailSubject = subject;
                 this.emailBody = body;
-
+                this.store.dispatch(
+                  setEmailSendingStatus({ rowId: recipient, status: 'sending' })
+                );
                 // Simulate a random delay between 3 and 10 minutes
                 const delayTime = this.getRandomDelay();
 
@@ -79,8 +90,27 @@ export class SendingMailComponent {
     });
     // Subscribe to email sending status
     this.store.select(selectEmailSendingStatus).subscribe((status) => {
-      console.log('Email sending status:', status);
+      
+      let id = Object.keys(status).length -1
+      let value = Object.values(status)[id -1]
+      this.updateSheetWithStatus(id, value);
+      console.log(
+        'Email sending status:',
+        status,
+        Object.keys(status),
+        id,
+        value
+      );
     });
+  }
+
+  updateSheetWithStatus(rowIndex: number, status: string): Observable<any> {
+    const range = `Mailing!A2:E${rowIndex + 1}`; // Assuming status is written in column E
+    const body = {
+      values: [[status]], // Status is being written in the respective row
+    };
+
+    return this.gmailService.updateSheetData(this.spreadsheetId, range, body);
   }
 
   extractSheetId(url: string): void {
@@ -158,8 +188,8 @@ export class SendingMailComponent {
 
   // Helper method to get a random delay between 3 and 10 minutes
   private getRandomDelay(): number {
-    const min = 1 * 60 * 1000; // 3 minutes in milliseconds
-    const max = 2 * 60 * 1000; // 10 minutes in milliseconds
+    const min = 0 * 60 * 1000; // 3 minutes in milliseconds
+    const max = 1 * 60 * 1000; // 10 minutes in milliseconds
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
