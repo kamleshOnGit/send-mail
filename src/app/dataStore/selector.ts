@@ -105,3 +105,8 @@ export const selectSendingEmail = createSelector(
   selectEmailState,
   (state: State) => state.sendingEmail
 );
+
+export const selectSpreadsheetId = createSelector(
+  selectEmailState,
+  (state:State) => state.spreadsheetId
+);

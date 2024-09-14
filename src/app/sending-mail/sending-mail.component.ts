@@ -10,6 +10,7 @@ import {
   loadSheetData,
   sendEmail,
   setEmailSendingStatus,
+  updateSpreadsheetId,
 } from '../dataStore/actions';
 import {
   selectEmailSendingStatus,
@@ -90,37 +91,78 @@ export class SendingMailComponent {
     });
     // Subscribe to email sending status
     this.store.select(selectEmailSendingStatus).subscribe((status) => {
-      
-      let id = Object.keys(status).length -1
-      let value = Object.values(status)[id -1]
-      this.updateSheetWithStatus(id, value);
-      console.log(
-        'Email sending status:',
-        status,
-        Object.keys(status),
-        id,
-        value
-      );
+      console.log(status);
+      // const keys = Object.keys(status);
+      // const values = Object.values(status);
+
+      // if (keys.length > 0) {
+      //   const email = keys[keys.length - 1]; // Get the email associated with the status
+      //   const value = values[values.length - 1]; // Get the corresponding status
+
+      //   // First, check if sheetData$ is defined and has values
+      //   if (this.sheetData$) {
+      //     this.sheetData$.subscribe((sheetData) => {
+      //       if (sheetData && sheetData.length > 0) {
+      //         // Ensure sheetData is not empty
+      //         // Find the correct row index based on the email
+      //         const rowIndex = sheetData.findIndex((row) => row[1] === email); // Assuming the recipient email is in column B
+
+      //         // Check if rowIndex is valid and status is "success"
+      //         if (rowIndex !== -1 && value === 'success') {
+      //           console.log('Email sending status:', status, rowIndex, value);
+
+      //           // Call updateSheetWithStatus to update the Google Sheet with status in column E
+      //           this.updateSheetWithStatus(rowIndex + 2, value).subscribe(
+      //             // Adding 2 because sheet rows are 1-indexed
+      //             (response) => {
+      //               console.log(
+      //                 `Sheet updated for row ${rowIndex + 2}:`,
+      //                 response
+      //               );
+      //             },
+      //             (error) => {
+      //               console.error(
+      //                 `Failed to update sheet for row ${rowIndex + 2}:`,
+      //                 error
+      //               );
+      //             }
+      //           );
+      //         } else if (rowIndex === -1) {
+      //           console.error('Row index is not found for email:', email);
+      //         } else if (value !== 'success') {
+      //           console.warn(
+      //             `Email status is ${value}, skipping sheet update.`
+      //           );
+      //         }
+      //       } else {
+      //         console.warn('Sheet data is empty.');
+      //       }
+      //     });
+      //   } else {
+      //     console.warn('sheetData$ is undefined.');
+      //   }
+      // }
     });
   }
 
-  updateSheetWithStatus(rowIndex: number, status: string): Observable<any> {
-    const range = `Mailing!A2:E${rowIndex + 1}`; // Assuming status is written in column E
-    const body = {
-      values: [[status]], // Status is being written in the respective row
-    };
+  // updateSheetWithStatus(rowIndex: number, status: string): Observable<any> {
+  //   const range = `Mailing!E${rowIndex}`; // Assuming status is written in column E
+  //   const body = {
+  //     values: [[status]], // Status is being written in the respective row
+  //   };
 
-    return this.gmailService.updateSheetData(this.spreadsheetId, range, body);
-  }
+  //   return this.gmailService.updateSheetData(this.spreadsheetId, range, body);
+  // }
 
   extractSheetId(url: string): void {
-    // Regular expression to extract the Sheet ID from the URL
     const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
     const matches = url.match(regex);
-
+    console.log(matches)
     if (matches && matches[1]) {
-      this.spreadsheetId = matches[1]; // Extracted Sheet ID
-      console.log('Sheet ID:', this.spreadsheetId);
+      const spreadsheetId = matches[1];
+      this.spreadsheetId = spreadsheetId;
+      this.store.dispatch(updateSpreadsheetId({ spreadsheetId:matches[1] }));
+      console.log('Sheet ID:', spreadsheetId);
     } else {
       console.error('Invalid Google Sheet URL');
     }

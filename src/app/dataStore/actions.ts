@@ -98,7 +98,6 @@ export const sendEmailFailure = createAction(
   props<{ sender: string; recipient: string; error: any }>()
 );
 
-
 export const startLoadingSheetData = createAction(
   '[Email] Start Loading Sheet Data'
 );
@@ -107,9 +106,69 @@ export const stopLoadingSheetData = createAction(
 );
 
 export const startSendingEmail = createAction('[Email] Start Sending Email');
+
 export const stopSendingEmail = createAction('[Email] Stop Sending Email');
 
 export const setEmailSendingStatus = createAction(
   '[Email] update email sending status',
-  props<{ rowId :string,status:string}>()
+  props<{ rowId: string; status: string }>()
+);
+
+export const updateSheetStatus = createAction(
+  '[Email] Update Sheet Status',
+  props<{ rowIndex: number; status: string }>()
+);
+export const updateSheetStatusSuccess = createAction(
+  '[Email] Update Sheet Status Success',
+  props<{ rowIndex: number; status: string }>()
+);
+export const updateSheetStatusFailure = createAction(
+  '[Email] Update Sheet Status Failure',
+  props<{ rowIndex: number; error: any }>()
+);
+
+// Action to update the spreadsheet ID
+export const updateSpreadsheetId = createAction(
+  '[Sheet] Update Spreadsheet ID',
+  props<{ spreadsheetId: string }>()
+);
+
+// Optional: Action for success or failure handling if needed
+export const updateSpreadsheetIdSuccess = createAction(
+  '[Sheet] Update Spreadsheet ID Success'
+);
+
+export const updateSpreadsheetIdFailure = createAction(
+  '[Sheet] Update Spreadsheet ID Failure',
+  props<{ error: any }>()
+);
+
+// Action to start fetching the email signature
+export const fetchSignature = createAction('[Email] Fetch Signature');
+
+// Action for successfully fetching the email signature
+export const fetchSignatureSuccess = createAction(
+  '[Email] Fetch Signature Success',
+  props<{ signature: string }>()
+);
+
+// Action for failed fetching of the email signature
+export const fetchSignatureFailure = createAction(
+  '[Email] Fetch Signature Failure',
+  props<{ error: any }>()
+);
+
+export const updateSignature = createAction(
+  '[Email] Update Signature',
+  props<{ sendAsEmail: string; newSignature: string }>()
+);
+
+export const updateSignatureSuccess = createAction(
+  '[Email] Update Signature Success',
+  props<{ newSignature: string }>()
+);
+
+export const updateSignatureFailure = createAction(
+  '[Email] Update Signature Failure',
+  props<{ error: any }>()
 );

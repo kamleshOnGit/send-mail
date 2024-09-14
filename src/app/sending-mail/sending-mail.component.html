@@ -199,30 +199,25 @@
                 <div class="flex items-center">
                   <!-- Email icon -->
                   <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-6 w-6 text-blue-500 mr-2 border "
-                    viewBox="0 0 24 24"
+                    class="w-5 h-5 mr-3"
                     fill="none"
-                    stroke="#000000"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
                     <path
-                      stroke="#000000"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M4 6h16M4 12h16M4 18h16"
+                      d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                     />
                   </svg>
 
                   <!-- Status message for each email -->
                   <p
-                    class="text-lg  text-sm"
+                    class="text-lg text-sm"
                     [ngClass]="{
                       'text-green-500': emailStatus[row[1]] === 'success',
                       'text-red-500': emailStatus[row[1]] === 'error'
                     }"
                   >
-                    {{ row[1] }} - 
+                    {{ row[1] }} -
                     {{
                       emailStatus[row[1]] === "success"
                         ? "Email Sent Successfully"

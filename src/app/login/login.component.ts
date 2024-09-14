@@ -47,7 +47,7 @@ export class LoginComponent {
         'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest',
       ],
       scope:
-        'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
+        'https://www.googleapis.com/auth/gmail.settings.basic https://www.googleapis.com/auth/gmail.settings.sharing https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
       include_granted_scopes: 'true',
       state: 'pass-through value', // Optional: can be used to pass state information
     };

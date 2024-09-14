@@ -9,6 +9,8 @@ import { Email, EmailDetails } from '../dataModel/email-details.model';
 export class GmailService {
   private apiUrl = 'https://www.googleapis.com/gmail/v1/';
   private sheetsApiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/';
+  private userSetting =
+    'https://www.googleapis.com/gmail/v1/users/me/settings/sendAs';
 
   constructor(private http: HttpClient) {}
 
@@ -61,6 +63,35 @@ export class GmailService {
     return this.http.post(url, { raw: emailMessage }, { headers });
   }
 
+  getSignatures(): Observable<any> {
+    return this.http.get<any>(`${this.userSetting}`, {
+      headers: {
+        Authorization: `Bearer ${this.getAccessToken()}`,
+      },
+    });
+  }
+
+  updateSignature(
+    sendAsEmail: string,
+    signature: string
+  ): Observable<any> {
+    const updateData = {
+      sendAsEmail: {
+        signature: signature,
+      },
+    };
+
+    return this.http.put<any>(
+      `${this.userSetting}/${sendAsEmail}`,
+      updateData,
+      {
+        headers: {
+          Authorization: `Bearer ${this.getAccessToken()}`,
+        },
+      }
+    );
+  }
+
   // Method to get Google Sheets data
   getSheetData(spreadsheetId: string, range: string): Observable<any> {
     const url = `${this.sheetsApiUrl}${spreadsheetId}/values/${range}`;
@@ -84,8 +115,7 @@ export class GmailService {
       'Content-Type': 'application/json',
     });
 
-    return this.http.put(url, body, { headers })
-  
+    return this.http.put(url, body, { headers });
   }
 
   // Method to get user's emails, 50 items per call

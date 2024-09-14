@@ -22,6 +22,17 @@ import {
   stopLoadingSheetData,
   stopSendingEmail,
   setEmailSendingStatus,
+  updateSheetStatusSuccess,
+  updateSheetStatusFailure,
+  updateSpreadsheetId,
+  updateSpreadsheetIdFailure,
+  updateSpreadsheetIdSuccess,
+  fetchSignature,
+  fetchSignatureFailure,
+  fetchSignatureSuccess,
+  updateSignature,
+  updateSignatureFailure,
+  updateSignatureSuccess,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -33,6 +44,7 @@ export interface State {
   loadingSheetData: boolean; // New loading state for fetching sheet data
   sendingEmail: boolean; // New loading state for sending emails
   sheetData: string[][]; // Added to store sheet data rows
+  spreadsheetId: string; //
   emailSendingStatus: { [key: string]: string }; // Added to store the status of each email sent (success or failure)
   pagination: {
     currentPage: number;
@@ -53,6 +65,7 @@ export const initialState: State = {
   loadingSheetData: false, // Default to false
   sendingEmail: false, // Default to false
   sheetData: [], // Initialize empty sheet data
+  spreadsheetId: '' ,
   emailSendingStatus: {}, // Initialize an empty email status object
   pagination: {
     currentPage: 1,
@@ -214,12 +227,66 @@ const _emailReducer = createReducer(
     ...state,
     sendingEmail: false,
   })),
-  on(setEmailSendingStatus, (state,{rowId, status})=> ({
+  on(setEmailSendingStatus, (state, { rowId, status }) => ({
     ...state,
     emailSendingStatus: {
       ...state.emailSendingStatus,
       [rowId]: status,
     },
+  })),
+  on(updateSheetStatusSuccess, (state, { rowIndex, status }) => ({
+    ...state,
+    emailSendingStatus: {
+      ...state.emailSendingStatus,
+      [rowIndex]: status, // Update the status in the state
+    },
+    sheetUpdateError: null, // Clear any previous error
+  })),
+  on(updateSheetStatusFailure, (state, { rowIndex, error }) => ({
+    ...state,
+    sheetUpdateError: error, // Store the error in case of failure
+  })),
+  on(updateSpreadsheetId, (state, { spreadsheetId }) => ({
+    ...state,
+    spreadsheetId: spreadsheetId,
+  })),
+  // Optional: Handle success and failure if needed
+  on(updateSpreadsheetIdSuccess, (state) => ({
+    ...state,
+  })),
+  on(updateSpreadsheetIdFailure, (state, { error }) => ({
+    ...state,
+    error,
+  })),
+  on(fetchSignature, (state) => ({
+    ...state,
+    loading: true,
+  })),
+  on(fetchSignatureSuccess, (state, { signature }) => ({
+    ...state,
+    signature,
+    loading: false,
+    error: null,
+  })),
+  on(fetchSignatureFailure, (state, { error }) => ({
+    ...state,
+    loading: false,
+    error,
+  })),
+  on(updateSignature, (state) => ({
+    ...state,
+    loading: true,
+  })),
+  on(updateSignatureSuccess, (state, { newSignature }) => ({
+    ...state,
+    signature: newSignature,
+    loading: false,
+    error: null,
+  })),
+  on(updateSignatureFailure, (state, { error }) => ({
+    ...state,
+    loading: false,
+    error,
   }))
 );
 

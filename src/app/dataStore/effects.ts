@@ -31,6 +31,15 @@ import {
   stopLoadingSheetData,
   startSendingEmail,
   stopSendingEmail,
+  updateSheetStatus,
+  updateSheetStatusSuccess,
+  updateSheetStatusFailure,
+  fetchSignature,
+  fetchSignatureFailure,
+  fetchSignatureSuccess,
+  updateSignature,
+  updateSignatureFailure,
+  updateSignatureSuccess,
 } from './actions';
 
 import { GmailService } from '../services/gmail.service';
@@ -39,6 +48,8 @@ import {
   selectCurrentPage,
   selectNextPageToken,
   selectPrevPageToken,
+  selectSheetData,
+  selectSpreadsheetId,
 } from './selector';
 import { select, Store } from '@ngrx/store';
 import { State } from './reducers';
@@ -170,15 +181,101 @@ export class EmailEffects {
     this.actions$.pipe(
       ofType(sendEmail),
       tap(() => this.store.dispatch(startSendingEmail())), // Start loader
-      mergeMap(({ sender, recipient, subject, body }) =>
-        this.gmailService.sendEmail(sender, recipient, subject, body).pipe(
-          map(() => sendEmailSuccess({ sender, recipient })),
-          catchError((error) =>
-            of(sendEmailFailure({ sender, recipient, error }))
-          ),
-        finalize(() => this.store.dispatch(stopSendingEmail())) // Stop loader
+      withLatestFrom(this.store.select(selectSheetData)),
+      mergeMap(([action, sheetData]) => {
+        const { sender, recipient, subject, body } = action;
+
+        return this.gmailService
+          .sendEmail(sender, recipient, subject, body)
+          .pipe(
+            // Handle success case
+            map(() => {
+              // Find the row index based on recipient email
+              const rowIndex = sheetData.findIndex(
+                (row: any[]) => row[1] === recipient
+              ); // Assuming recipient is in column B
+
+              // Dispatch success action
+              this.store.dispatch(sendEmailSuccess({ sender, recipient }));
+
+              // If email is successfully sent, update the Google Sheet with the status
+              if (rowIndex !== -1) {
+                this.store.dispatch(
+                  updateSheetStatus({ rowIndex, status: 'success' })
+                );
+              }
+
+              return sendEmailSuccess({ sender, recipient });
+            }),
+            // Handle error case
+            catchError((error) => {
+              // Dispatch failure action
+              this.store.dispatch(
+                sendEmailFailure({ sender, recipient, error })
+              );
+              return of(sendEmailFailure({ sender, recipient, error }));
+            }),
+            // Stop loader regardless of success or error
+            finalize(() => this.store.dispatch(stopSendingEmail()))
+          );
+      })
+    )
+  );
+
+  updateSheetStatus$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(updateSheetStatus), // Listen for the updateSheetStatus action
+      withLatestFrom(this.store.select(selectSpreadsheetId)), // Get spreadsheetId from store
+      mergeMap(([{ rowIndex, status }, spreadsheetId]) => {
+        console.log('Spreadsheet ID from store:', spreadsheetId); // Debugging line
+
+        if (!spreadsheetId) {
+          console.error('Spreadsheet ID is not defined');
+          return of(
+            updateSheetStatusFailure({
+              rowIndex,
+              error: 'Spreadsheet ID is not defined',
+            })
+          );
+        }
+
+        return this.gmailService
+          .updateSheetData(spreadsheetId, `Mailing!E${rowIndex + 2}`, {
+            values: [[status]],
+          })
+          .pipe(
+            map(() => updateSheetStatusSuccess({ rowIndex, status })), // On success, dispatch the success action
+            catchError((error) =>
+              of(updateSheetStatusFailure({ rowIndex, error }))
+            ) // On failure, dispatch failure action
+          );
+      })
+    )
+  );
+  // Effect to fetch the email signature
+  fetchSignature$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(fetchSignature),
+      mergeMap(() =>
+        this.gmailService.getSignatures().pipe(
+          map((signature) => fetchSignatureSuccess({ signature })),
+          catchError((error) => of(fetchSignatureFailure({ error })))
+        )
+      )
+    )
+  );
+
+  // Effect to update the email signature
+    updateSignature$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(updateSignature),
+      mergeMap(({ sendAsEmail, newSignature }) =>
+        this.gmailService.updateSignature(sendAsEmail, newSignature).pipe(
+          map(() => updateSignatureSuccess({ newSignature })),
+          catchError((error) => of(updateSignatureFailure({ error })))
         )
       )
     )
   );
 }
+
