@@ -144,6 +144,23 @@
               ></textarea>
             </div>
 
+            <!-- Email Body -->
+            <div class="mb-4">
+              <label
+                for="emailBody"
+                class="block text-sm font-medium text-gray-700"
+                >Signature</label
+              >
+              <textarea
+                id="signature"
+                rows="4"
+                name="signature"
+                [(ngModel)]="signature"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter your signature"
+              ></textarea>
+            </div>
+
             <!-- Send Button -->
             <div class="mt-4">
               <button

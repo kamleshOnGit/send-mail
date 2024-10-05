@@ -18,15 +18,17 @@ export class GmailService {
   private createEmailMessage(
     recipient: string,
     subject: string,
-    body: string
+    body: string,
+    signature: string
   ): string {
     const emailLines = [
       `To: ${recipient}`,
       `Subject: ${subject}`,
-      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Type: text/html; charset="UTF-8"',
       'Content-Transfer-Encoding: 7bit',
       '',
-      body,
+      `<div>${body}</div>`, // Wrap body content in a div to support HTML
+      `<div>${signature}</div>`, // Wrap signature in a div for HTML content
     ].join('\n');
 
     // Encode the MIME message in base64url format
@@ -48,7 +50,8 @@ export class GmailService {
     sender: string,
     recipient: string,
     subject: string,
-    body: string
+    body: string,
+    signature: string
   ): Observable<any> {
     const url = `${this.apiUrl}users/me/messages/send`;
     const headers = new HttpHeaders({
@@ -57,7 +60,12 @@ export class GmailService {
     });
 
     // Create email message payload
-    const emailMessage = this.createEmailMessage(recipient, subject, body);
+    const emailMessage = this.createEmailMessage(
+      recipient,
+      subject,
+      body,
+      signature
+    );
 
     // Send the POST request with the encoded email message
     return this.http.post(url, { raw: emailMessage }, { headers });
@@ -71,10 +79,7 @@ export class GmailService {
     });
   }
 
-  updateSignature(
-    sendAsEmail: string,
-    signature: string
-  ): Observable<any> {
+  updateSignature(sendAsEmail: string, signature: string): Observable<any> {
     const updateData = {
       sendAsEmail: {
         signature: signature,

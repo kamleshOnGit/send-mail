@@ -183,10 +183,10 @@ export class EmailEffects {
       tap(() => this.store.dispatch(startSendingEmail())), // Start loader
       withLatestFrom(this.store.select(selectSheetData)),
       mergeMap(([action, sheetData]) => {
-        const { sender, recipient, subject, body } = action;
+        const { sender, recipient, subject, body , signature} = action;
 
         return this.gmailService
-          .sendEmail(sender, recipient, subject, body)
+          .sendEmail(sender, recipient, subject, body, signature)
           .pipe(
             // Handle success case
             map(() => {
@@ -240,7 +240,7 @@ export class EmailEffects {
         }
 
         return this.gmailService
-          .updateSheetData(spreadsheetId, `Mailing!E${rowIndex + 2}`, {
+          .updateSheetData(spreadsheetId, `Mailing!F${rowIndex + 2}`, {
             values: [[status]],
           })
           .pipe(
@@ -266,7 +266,7 @@ export class EmailEffects {
   );
 
   // Effect to update the email signature
-    updateSignature$ = createEffect(() =>
+  updateSignature$ = createEffect(() =>
     this.actions$.pipe(
       ofType(updateSignature),
       mergeMap(({ sendAsEmail, newSignature }) =>
@@ -278,4 +278,3 @@ export class EmailEffects {
     )
   );
 }
-

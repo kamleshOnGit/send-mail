@@ -31,9 +31,10 @@ export class SendingMailComponent {
   recipientEmail = '';
   emailSubject = '';
   emailBody = '';
+  signature = '';
   spreadsheetId = ''; // The Google Spreadsheet ID
   spreadsheetUrl = ''; // The Google Spreadsheet ID
-  sheetRange = 'Mailing!A2:D'; // Assuming columns are in A2:D (Sender, Recipient, Subject, Body)
+  sheetRange = 'Mailing!A2:E'; // Assuming columns are in A2:D (Sender, Recipient, Subject, Body)
   loadingSheetData$: Observable<boolean> | undefined;
   sendingEmail$: Observable<boolean> | undefined;
   emailSendingStatus$: Observable<{ [key: string]: string }> | undefined;
@@ -55,13 +56,14 @@ export class SendingMailComponent {
           .pipe(
             concatMap((row: any, i: number) => {
               if (row.length >= 4) {
-                const [sender, recipient, subject, body] = row;
-
+                const [sender, recipient, subject, body, signature] = row;
+                console.log(row);
                 // Update compose box fields
                 this.senderEmail = sender;
                 this.recipientEmail = recipient;
                 this.emailSubject = subject;
                 this.emailBody = body;
+                this.signature = signature;
                 this.store.dispatch(
                   setEmailSendingStatus({ rowId: recipient, status: 'sending' })
                 );
@@ -73,7 +75,7 @@ export class SendingMailComponent {
                   concatMap(() => {
                     // Dispatch sendEmail action instead of setting component properties
                     this.store.dispatch(
-                      sendEmail({ sender, recipient, subject, body })
+                      sendEmail({ sender, recipient, subject, body, signature })
                     );
                     return of(null); // Ensure an observable is returned
                   })
@@ -157,11 +159,11 @@ export class SendingMailComponent {
   extractSheetId(url: string): void {
     const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
     const matches = url.match(regex);
-    console.log(matches)
+    console.log(matches);
     if (matches && matches[1]) {
       const spreadsheetId = matches[1];
       this.spreadsheetId = spreadsheetId;
-      this.store.dispatch(updateSpreadsheetId({ spreadsheetId:matches[1] }));
+      this.store.dispatch(updateSpreadsheetId({ spreadsheetId: matches[1] }));
       console.log('Sheet ID:', spreadsheetId);
     } else {
       console.error('Invalid Google Sheet URL');
@@ -174,8 +176,16 @@ export class SendingMailComponent {
   }
 
   // Dispatch the action to send email
-  sendEmail(sender: string, recipient: string, subject: string, body: string) {
-    this.store.dispatch(sendEmail({ sender, recipient, subject, body }));
+  sendEmail(
+    sender: string,
+    recipient: string,
+    subject: string,
+    body: string,
+    signature: string
+  ) {
+    this.store.dispatch(
+      sendEmail({ sender, recipient, subject, body, signature })
+    );
   }
 
   // loadSheetData() {

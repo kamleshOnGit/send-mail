@@ -85,7 +85,13 @@ export const loadSheetDataFailure = createAction(
 // Send email actions
 export const sendEmail = createAction(
   '[Email] Send Email',
-  props<{ sender: string; recipient: string; subject: string; body: string }>()
+  props<{
+    sender: string;
+    recipient: string;
+    subject: string;
+    body: string;
+    signature:string;
+  }>()
 );
 
 export const sendEmailSuccess = createAction(
