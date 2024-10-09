@@ -1,35 +1,53 @@
- <header class="bg-zinc-900 py-4">
-   <div class="container mx-auto px-4">
-     <nav class="flex justify-between items-center">
-       <div class="flex items-center">
-         <h1 class="text-white text-lg font-bold">Send Mail</h1>
-       </div>
-       <div class="hidden md:flex items-center space-x-4">
-         <a routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" class="text-white">Dashboard</a>
-         <a routerLink="/mailing" routerLinkActive="active" ariaCurrentWhenActive="page" class="text-white">Sending
-           mail </a>
-         <a routerLink="/inbox" class="text-white">Inbox</a>
-         <a routerLink="/" class="text-white">Help</a>
-         <a href="javscript:void()" (click)="logout()" class="text-white">Logout</a>
-       </div>
-       <div class="md:hidden">
-         <!-- Mobile menu button -->
-         <button id="mobile-menu-button" class="text-white">
-           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-             <path fill-rule="evenodd"
-               d="M2 5a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zm1 5a1 1 0 100 2h14a1 1 0 100-2H3zm-1 6a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1z"
-               clip-rule="evenodd" />
-           </svg>
-         </button>
-       </div>
-     </nav>
-   </div>
- </header>
- <div class="flex-grow flex items-center justify-center">
-   <div id="mobile-menu" class="md:hidden bg-blue-500 py-4 px-4 text-white hidden">
-     <a routerLink="/" class="block py-2">Home</a>
-     <a routerLink="/mailing" class="block py-2">Sending Mail</a>
-     <a routerLink="/inbox" class="block py-2">Inbox</a>
+<header class="bg-zinc-900 py-4">
+  <div class="container mx-auto px-4">
+    <nav class="flex justify-between items-center">
+      <div class="flex items-center">
+        <h1 class="text-white text-lg font-bold">Send Mail</h1>
+      </div>
+      <div class="hidden md:flex items-center space-x-4">
+        <!-- <a routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" class="text-white">Dashboard</a> -->
+
+        <a routerLink="/inbox" class="text-white">Inbox</a>
+        <a
+          routerLink="/mailing"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          class="text-white"
+          >Sending mail
+        </a>
+        <!-- <a routerLink="/" class="text-white">Help</a> -->
+        <a href="javscript:void()" (click)="logout()" class="text-white"
+          >Logout</a
+        >
+      </div>
+      <div class="md:hidden">
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-button" class="text-white">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M2 5a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zm1 5a1 1 0 100 2h14a1 1 0 100-2H3zm-1 6a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+    </nav>
+  </div>
+</header>
+<div class="flex-grow flex items-center justify-center">
+  <div
+    id="mobile-menu"
+    class="md:hidden bg-blue-500 py-4 px-4 text-white hidden"
+  >
+    <a routerLink="/" class="block py-2">Home</a>
+    <a routerLink="/mailing" class="block py-2">Sending Mail</a>
+    <a routerLink="/inbox" class="block py-2">Inbox</a>
     <span (click)="logout()" class="text-white">Logout</span>
-   </div>
+  </div>
 </div>

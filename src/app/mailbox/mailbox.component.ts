@@ -154,6 +154,10 @@ export class MailboxComponent {
           });
   }
 
+  sendSingle(){
+    this.router.navigateByUrl('/mailing');
+  }
+
   getValidLabel(routeLabel: string): 'inbox' | 'sent' | 'trash' | 'draft' {
     const validLabels: {
       [key: string]: 'inbox' | 'sent' | 'trash' | 'draft';

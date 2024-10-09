@@ -147,7 +147,7 @@
             <!-- Email Body -->
             <div class="mb-4">
               <label
-                for="emailBody"
+                for="signature"
                 class="block text-sm font-medium text-gray-700"
                 >Signature</label
               >
@@ -164,8 +164,8 @@
             <!-- Send Button -->
             <div class="mt-4">
               <button
-                type="submit"
-                [disabled]="true"
+                type="button" (click)="sendEmail(senderEmail, recipientEmail,emailSubject,emailBody,signature)"
+                [disabled]=" spreadsheetId.length == 0 && (  emailSubject.length == 0 ||recipientEmail.length == 0 || emailBody.length == 0) "
                 class="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
               >
                 Send

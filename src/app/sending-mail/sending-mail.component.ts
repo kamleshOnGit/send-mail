@@ -39,6 +39,7 @@ export class SendingMailComponent {
   sendingEmail$: Observable<boolean> | undefined;
   emailSendingStatus$: Observable<{ [key: string]: string }> | undefined;
   sheetData$: Observable<string[][]> | undefined;
+  isButtonDisabled: boolean = true;
 
   constructor(private gmailService: GmailService, private store: Store) {}
 
@@ -46,6 +47,7 @@ export class SendingMailComponent {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     //Add 'implements OnInit' to the class.
     // Subscribe to sheet data in the component
+
     this.sheetData$ = this.store.select(selectSheetData);
     this.loadingSheetData$ = this.store.select(selectLoadingSheetData);
     this.sendingEmail$ = this.store.select(selectSendingEmail);
@@ -93,7 +95,20 @@ export class SendingMailComponent {
     });
     // Subscribe to email sending status
     this.store.select(selectEmailSendingStatus).subscribe((status) => {
-      console.log(status);
+      console.log(
+        status,
+        Object.values(status).every((e) => e == 'success')
+      );
+      if (
+        this.spreadsheetId.length == 0 &&
+        Object.values(status).every((e) => e == 'success')
+      ) {
+        this.senderEmail = '';
+        this.recipientEmail = '';
+        this.emailSubject = '';
+        this.emailBody = '';
+        this.signature = '';
+      }
       // const keys = Object.keys(status);
       // const values = Object.values(status);
 
