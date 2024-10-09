@@ -8,7 +8,18 @@ import { AuthCallbackComponent } from './auth-callback/auth-callback.component';
 import { EmailDetailsComponent } from './email-details-component/email-details.component';
 
 export const routes: Routes = [
-  { path: 'inbox', component: MailboxComponent, canActivate: [AuthGuard] },
+  {
+    path: 'inbox',
+    component: MailboxComponent,
+    canActivate: [AuthGuard],
+    runGuardsAndResolvers: 'paramsChange',
+  },
+  {
+    path: 'sent',
+    component: MailboxComponent,
+    canActivate: [AuthGuard],
+    runGuardsAndResolvers: 'paramsChange',
+  },
   {
     path: 'inbox/:id',
     component: EmailDetailsComponent,

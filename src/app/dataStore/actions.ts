@@ -4,7 +4,11 @@ import { Email, EmailDetails } from '../dataModel/email-details.model';
 
 export const loadEmails = createAction(
   '[Email] Load Emails',
-  props<{ currentPage: number; pageToken?: string }>()
+  props<{
+    currentPage: number;
+    pageToken?: string;
+    label: 'inbox' | 'sent' | 'trash' | 'draft';
+  }>()
 );
 
 export const updateCurrentPage = createAction(
@@ -64,7 +68,10 @@ export const markAsUnread = createAction(
 );
 export const paginateEmails = createAction(
   '[Email List] Paginate Emails',
-  props<{ direction: 'next' | 'prev' }>()
+  props<{
+    direction: 'next' | 'prev';
+    label: 'inbox' | 'sent' | 'trash' | 'draft';
+  }>()
 );
 
 export const loadSheetData = createAction(
@@ -177,4 +184,12 @@ export const updateSignatureSuccess = createAction(
 export const updateSignatureFailure = createAction(
   '[Email] Update Signature Failure',
   props<{ error: any }>()
+);
+
+export const resetNextPrevToken = createAction(
+  'Reset next & prev Token',
+  props<{
+    nextPageToken?: string;
+    prevPageToken?: string;
+  }>()
 );

@@ -108,5 +108,14 @@ export const selectSendingEmail = createSelector(
 
 export const selectSpreadsheetId = createSelector(
   selectEmailState,
-  (state:State) => state.spreadsheetId
+  (state: State) => state.spreadsheetId
 );
+
+export const selectEmailsByLabel = (label: 'inbox' | 'sent' | 'trash' | 'draft') =>
+  createSelector(selectEmailState, (state: State) =>
+    state.emails.filter(
+      (email) => (
+        email.labelIds.includes(label.toUpperCase())
+      )
+    )
+  );

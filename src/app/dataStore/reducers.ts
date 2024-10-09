@@ -33,6 +33,7 @@ import {
   updateSignature,
   updateSignatureFailure,
   updateSignatureSuccess,
+  resetNextPrevToken,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -287,6 +288,14 @@ const _emailReducer = createReducer(
     ...state,
     loading: false,
     error,
+  })),
+  on(resetNextPrevToken, (state, { nextPageToken, prevPageToken }) => ({
+    ...state, // Spread the existing state to keep other properties
+    pagination: {
+      ...state.pagination, // Spread existing pagination object
+      nextPageToken: nextPageToken || undefined, // Handle resetting nextPageToken
+      prevPageToken: prevPageToken || undefined, // Handle resetting prevPageToken
+    },
   }))
 );
 
@@ -294,3 +303,6 @@ const _emailReducer = createReducer(
 export function emailReducer(state: State | undefined, action: Action) {
   return _emailReducer(state, action);
 }
+
+
+

@@ -73,7 +73,7 @@ export class EmailEffects {
           action.pageToken ??
           (action.currentPage > 1 ? prevPageToken : nextPageToken);
 
-        return this.gmailService.getEmails(pageToken).pipe(
+        return this.gmailService.getEmails(pageToken, action.label).pipe(
           map((response: any) => {
             const emails = response.messages;
             const totalEmails = response.resultSizeEstimate;
@@ -108,7 +108,7 @@ export class EmailEffects {
         const pageToken =
           action.direction === 'next' ? nextPageToken : prevPageToken;
 
-        return of(loadEmails({ currentPage, pageToken }));
+        return of(loadEmails({ currentPage, pageToken  , label:action.label}));
       })
     )
   );

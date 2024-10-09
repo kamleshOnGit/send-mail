@@ -1,5 +1,6 @@
 // email.model.ts
 export interface Email {
+  labelIds: any;
   date: any;
   label: any;
   isStarred: any;

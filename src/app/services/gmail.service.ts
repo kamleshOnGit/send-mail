@@ -124,11 +124,24 @@ export class GmailService {
   }
 
   // Method to get user's emails, 50 items per call
-  getEmails(nextPageToken?: string): Observable<any> {
+  getEmails(
+    nextPageToken?: string,
+    label: 'inbox' | 'sent' | 'trash' | 'draft' = 'inbox'
+  ): Observable<any> {
     let url = `${this.apiUrl}users/me/messages?maxResults=50`; // Set maxResults to 50
     if (nextPageToken) {
       url += `&pageToken=${nextPageToken}`;
     }
+    const labelIdsMap = {
+      inbox: 'INBOX',
+      sent: 'SENT',
+      trash: 'TRASH',
+      draft: 'DRAFT',
+    };
+
+    const labelId = labelIdsMap[label];
+    url += `&labelIds=${labelId}`; // Add label to the API cal
+
     const headers = new HttpHeaders({
       Authorization: `Bearer ${this.getAccessToken()}`,
     });

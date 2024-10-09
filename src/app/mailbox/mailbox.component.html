@@ -17,6 +17,37 @@
       </div>
     </div>
     </div> -->
+  <div
+    *ngIf="loading"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+  >
+    <div class="loader text-lg text-center">
+      <div class="mb-4">
+        <!-- Spinner -->
+        <svg
+          class="animate-spin h-10 w-10 text-white ms-auto me-auto"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
+      <p class="text-white">Fetching sheet data, please wait...</p>
+    </div>
+  </div>
   <div class="h-100 bg-gray-100 p-4">
     <div class="flex">
       <!-- Sidebar -->
@@ -28,6 +59,7 @@
         </button>
         <ul class="space-y-2">
           <li
+            (click)="navigateTo('inbox')"
             class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
           >
             <svg
@@ -43,6 +75,7 @@
             Inbox
           </li>
           <li
+            (click)="navigateTo('sent')"
             class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
           >
             <svg
@@ -53,7 +86,7 @@
             >
               <path d="M16 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l7-3 7 3z" />
             </svg>
-            Starred
+            Sent
           </li>
           <!-- Add more menu items here -->
         </ul>
