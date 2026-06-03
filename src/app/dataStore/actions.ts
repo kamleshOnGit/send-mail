@@ -5,15 +5,9 @@ import { Email, EmailDetails } from '../dataModel/email-details.model';
 export const loadEmails = createAction(
   '[Email] Load Emails',
   props<{
-    currentPage: number;
     pageToken?: string;
     label: 'inbox' | 'sent' | 'trash' | 'draft';
   }>()
-);
-
-export const updateCurrentPage = createAction(
-  '[Email] Update Current Page',
-  props<{ currentPage: number }>()
 );
 
 export const loadEmailsSuccess = createAction(
@@ -23,19 +17,40 @@ export const loadEmailsSuccess = createAction(
     currentPage: number;
     totalEmails: number;
     hasNextPage: boolean;
-    hasPrevPage: boolean;
     nextPageToken?: string;
-    prevPageToken?: string;
+    // Full history of tokens used to reach each page — enables correct "Previous"
+    pageTokenHistory: (string | undefined)[];
+    label: 'inbox' | 'sent' | 'trash' | 'draft';
   }>()
 );
-export const updateEmailInList = createAction(
-  '[Email] Update Email In List',
-  props<{ email: Email }>()
-);
+
 export const loadEmailsFailure = createAction(
   '[Email] Load Emails Failure',
   props<{ error: any }>()
 );
+
+// Navigate to the next page — effect resolves the token from store
+export const goToNextPage = createAction(
+  '[Email] Go To Next Page',
+  props<{ label: 'inbox' | 'sent' | 'trash' | 'draft' }>()
+);
+
+// Navigate to the previous page — effect resolves the token from store
+export const goToPrevPage = createAction(
+  '[Email] Go To Prev Page',
+  props<{ label: 'inbox' | 'sent' | 'trash' | 'draft' }>()
+);
+
+export const updateCurrentPage = createAction(
+  '[Email] Update Current Page',
+  props<{ currentPage: number }>()
+);
+
+export const updateEmailInList = createAction(
+  '[Email] Update Email In List',
+  props<{ email: Email }>()
+);
+
 export const loadEmailDetails = createAction(
   '[Email] Load Email Details',
   props<{ emailId: string }>()
@@ -66,6 +81,8 @@ export const markAsUnread = createAction(
   '[Email List] Mark As Unread',
   props<{ emailId: string }>()
 );
+
+// Kept for any remaining references — routes directly to loadEmails via effect
 export const paginateEmails = createAction(
   '[Email List] Paginate Emails',
   props<{
@@ -97,7 +114,9 @@ export const sendEmail = createAction(
     recipient: string;
     subject: string;
     body: string;
-    signature:string;
+    signature: string;
+    cc?: string;
+    bcc?: string;
   }>()
 );
 
@@ -119,7 +138,6 @@ export const stopLoadingSheetData = createAction(
 );
 
 export const startSendingEmail = createAction('[Email] Start Sending Email');
-
 export const stopSendingEmail = createAction('[Email] Stop Sending Email');
 
 export const setEmailSendingStatus = createAction(
@@ -140,32 +158,23 @@ export const updateSheetStatusFailure = createAction(
   props<{ rowIndex: number; error: any }>()
 );
 
-// Action to update the spreadsheet ID
 export const updateSpreadsheetId = createAction(
   '[Sheet] Update Spreadsheet ID',
   props<{ spreadsheetId: string }>()
 );
-
-// Optional: Action for success or failure handling if needed
 export const updateSpreadsheetIdSuccess = createAction(
   '[Sheet] Update Spreadsheet ID Success'
 );
-
 export const updateSpreadsheetIdFailure = createAction(
   '[Sheet] Update Spreadsheet ID Failure',
   props<{ error: any }>()
 );
 
-// Action to start fetching the email signature
 export const fetchSignature = createAction('[Email] Fetch Signature');
-
-// Action for successfully fetching the email signature
 export const fetchSignatureSuccess = createAction(
   '[Email] Fetch Signature Success',
   props<{ signature: string }>()
 );
-
-// Action for failed fetching of the email signature
 export const fetchSignatureFailure = createAction(
   '[Email] Fetch Signature Failure',
   props<{ error: any }>()
@@ -175,26 +184,27 @@ export const updateSignature = createAction(
   '[Email] Update Signature',
   props<{ sendAsEmail: string; newSignature: string }>()
 );
-
 export const updateSignatureSuccess = createAction(
   '[Email] Update Signature Success',
   props<{ newSignature: string }>()
 );
-
 export const updateSignatureFailure = createAction(
   '[Email] Update Signature Failure',
   props<{ error: any }>()
 );
 
+export const setLoading = createAction(
+  '[Email] Set Loading',
+  props<{ loading: boolean }>()
+);
+
+export const cancelBulkSend = createAction('[Email] Cancel Bulk Send');
+
+// Kept for backwards compat — resets token history when switching labels
 export const resetNextPrevToken = createAction(
   'Reset next & prev Token',
   props<{
     nextPageToken?: string;
     prevPageToken?: string;
   }>()
-);
-
-export const setLoading = createAction(
-  '[Email] Set Loading',
-  props<{ loading: boolean }>()
 );

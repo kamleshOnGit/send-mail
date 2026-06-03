@@ -8,6 +8,7 @@ export interface Email {
   threadId: string;
   payload?: EmailPayload;
   subject: string;
+  snippet?: string;
 }
 
 export interface EmailPayload {

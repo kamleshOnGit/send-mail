@@ -1,56 +1,50 @@
-import { Component } from '@angular/core';
-import { AuthService } from '../services/auth.service';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FooterComponent } from '../shared/footer/footer.component';
 import { HeaderComponent } from '../shared/header/header.component';
 import { GmailService } from '../services/gmail.service';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { forkJoin, Observable, take, withLatestFrom } from 'rxjs';
+import { Router, RouterModule } from '@angular/router';
+import { Observable, Subject } from 'rxjs';
 import { select, Store } from '@ngrx/store';
+import { take, takeUntil } from 'rxjs/operators';
 import { State } from '../dataStore/reducers';
 import {
   loadEmails,
-  loadEmailsSuccess,
+  goToNextPage,
+  goToPrevPage,
+  resetNextPrevToken,
+  toggleStar,
   markAsRead,
   markAsUnread,
-  paginateEmails,
-  resetNextPrevToken,
-  saveEmailDetails,
-  toggleStar,
-  updateCurrentPage,
-  updateEmailInList,
 } from '../dataStore/actions';
-import { Email, EmailDetails } from '../dataModel/email-details.model';
+import { Email } from '../dataModel/email-details.model';
 import {
-  selectHasEmails,
   selectAllEmails,
-  selectEmailDetailsById,
   selectCurrentPage,
   selectHasNextPage,
   selectHasPrevPage,
-  selectTotalPages,
-  selectEmailsByLabel,
+  selectCurrentLabel,
   dataLoading,
 } from '../dataStore/selector';
 
 @Component({
   selector: 'app-mailbox',
   standalone: true,
-  providers: [AuthService],
   templateUrl: './mailbox.component.html',
   styleUrl: './mailbox.component.css',
   imports: [FooterComponent, HeaderComponent, CommonModule, RouterModule],
 })
-export class MailboxComponent {
+export class MailboxComponent implements OnInit, OnDestroy {
   showDropdown: any;
-  currentpage!: string;
-  loading: boolean = true;
-  nextPageToken: any;
-  emails$: Observable<Email[]> | undefined;
+  loading = true;
+
+  emails$!: Observable<Email[]>;
   currentPage$!: Observable<number>;
-  totalPages$: Observable<number> | undefined;
-  hasNextPage$: Observable<boolean> | undefined;
-  hasPrevPage$: Observable<boolean> | undefined;
+  hasNextPage$!: Observable<boolean>;
+  hasPrevPage$!: Observable<boolean>;
+
+  private currentLabel: 'inbox' | 'sent' | 'trash' | 'draft' = 'inbox';
+  private destroy$ = new Subject<void>();
 
   constructor(
     private gmailService: GmailService,
@@ -59,249 +53,130 @@ export class MailboxComponent {
   ) {}
 
   ngOnInit(): void {
+    // Wire up store observables
+    this.emails$ = this.store.pipe(select(selectAllEmails));
+    this.currentPage$ = this.store.pipe(select(selectCurrentPage));
+    this.hasNextPage$ = this.store.pipe(select(selectHasNextPage));
+    this.hasPrevPage$ = this.store.pipe(select(selectHasPrevPage));
+
+    // Drive loading spinner from store
+    this.store
+      .select(dataLoading)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((v) => setTimeout(() => (this.loading = v), 100));
+
+    // Determine which label this route represents
+    const routeLabel = this.getLabelFromUrl(this.router.url);
+
+    // Check what is currently in the store
     this.store
       .pipe(
         select(selectAllEmails),
-        withLatestFrom(this.store.select(selectCurrentPage))
+        take(1) // one snapshot — don't subscribe forever
       )
-      .subscribe(([emails, currentPage]) => {
-        if (emails.length === 0) {
-          // Dispatch loadEmails action with the actual currentPage value
-          this.store.dispatch(
-            loadEmails({
-              currentPage: currentPage,
-              label: this.getValidLabel(this.router.url.slice(1)),
-            })
-          );
-
-        } else {
-          // Emails are already loaded, use the stored values
-          this.emails$ = this.store.pipe(select(selectAllEmails));
-          this.currentPage$ = this.store.pipe(select(selectCurrentPage));
-          this.totalPages$ = this.store.pipe(select(selectTotalPages));
-          this.hasNextPage$ = this.store.pipe(select(selectHasNextPage));
-          this.hasPrevPage$ = this.store.pipe(select(selectHasPrevPage));
-          this.loading = false;
-          // this.currentRoute = this.router.url.slice(1);
-        }
-      });
-
-    this.store
-      .select(dataLoading)
-      .subscribe((v) => setTimeout(() => (this.loading = v) , 500));
-
-  }
-
-  // fetchEmails(nextPageToken?: string): void {
-  //   this.gmailService.getEmails().subscribe((response: any) => {
-  //     // Check if there is a nextPageToken, and if so, fetch the next page
-  //     // if (response.nextPageToken) {
-  //     //   this.fetchEmails(response.nextPageToken);
-  //     // }
-  //     this.store.dispatch(loadEmailsSuccess({ emails: response }));
-  //     this.nextPageToken = response.nextPageToken;
-  //     const emailIds = response.messages.map((message: any) => message.id);
-  //     this.fetchEmailDetails(emailIds);
-  //   });
-  // }
-
-  navigateTo(folder: string) {
-    this.loading = true
-    this.store.dispatch(resetNextPrevToken({ nextPageToken: '',prevPageToken: ''}));
-    const label = this.getValidLabel(folder);
-    this.router.navigate([`/${folder}`]).then(() => {
-      this.store.dispatch(
-            loadEmails({
-              currentPage: 0,
-              label: this.getValidLabel(this.router.url.slice(1)),
-            }) )
+      .subscribe((storedEmails) => {
+        // Read the label the store was last loaded for
+        this.store
+          .pipe(select(selectCurrentLabel), take(1))
+          .subscribe((storedLabel) => {
+            if (storedEmails.length > 0 && storedLabel === routeLabel) {
+              // Cache hit: same label, emails already in store.
+              // Returning from an email detail — don't re-fetch, just show what we have.
+              this.currentLabel = routeLabel;
+              this.loading = false;
+            } else {
+              // Cache miss: different label, or first visit.
+              // Reset pagination state and fetch fresh.
+              this.currentLabel = routeLabel;
+              this.store.dispatch(
+                resetNextPrevToken({ nextPageToken: undefined, prevPageToken: undefined })
+              );
+              this.store.dispatch(loadEmails({ label: routeLabel }));
+            }
           });
+      });
   }
 
-  sendSingle(){
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+
+  navigateTo(folder: string): void {
+    const label = this.getValidLabel(folder);
+    this.currentLabel = label;
+    // Always reset and fetch when the user explicitly clicks a folder
+    this.store.dispatch(
+      resetNextPrevToken({ nextPageToken: undefined, prevPageToken: undefined })
+    );
+    this.router.navigate([`/${folder}`]).then(() => {
+      this.store.dispatch(loadEmails({ label }));
+    });
+  }
+
+  sendSingle(): void {
     this.router.navigateByUrl('/mailing');
   }
 
-  getValidLabel(routeLabel: string): 'inbox' | 'sent' | 'trash' | 'draft' {
-    const validLabels: {
-      [key: string]: 'inbox' | 'sent' | 'trash' | 'draft';
-    } = {
+  // ── Pagination ────────────────────────────────────────────────────────────
+
+  nextPage(): void {
+    this.store.dispatch(goToNextPage({ label: this.currentLabel }));
+  }
+
+  prevPage(): void {
+    this.store.dispatch(goToPrevPage({ label: this.currentLabel }));
+  }
+
+  // ── Email actions ─────────────────────────────────────────────────────────
+
+  viewEmail(emailId: string): void {
+    this.router.navigate(['/inbox', emailId]);
+  }
+
+  toggleStar(emailId: string): void {
+    this.store.dispatch(toggleStar({ emailId }));
+  }
+
+  markAsRead(emailId: string): void {
+    this.store.dispatch(markAsRead({ emailId }));
+  }
+
+  markAsUnread(emailId: string): void {
+    this.store.dispatch(markAsUnread({ emailId }));
+  }
+
+  toggleDropdown(event: Event): void {
+    this.showDropdown = !this.showDropdown;
+    event.stopPropagation();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  getLabelFromUrl(url: string): 'inbox' | 'sent' | 'trash' | 'draft' {
+    const segment = url.slice(1).split('?')[0].split('#')[0].split('/')[0];
+    return this.getValidLabel(segment);
+  }
+
+  getValidLabel(s: string): 'inbox' | 'sent' | 'trash' | 'draft' {
+    const valid: Record<string, 'inbox' | 'sent' | 'trash' | 'draft'> = {
       inbox: 'inbox',
       sent: 'sent',
       trash: 'trash',
       draft: 'draft',
     };
-
-    if (routeLabel in validLabels) {
-      return validLabels[routeLabel];
-    } else {
-      throw new Error(`Invalid label: ${routeLabel}`); // Handle the invalid case as needed
-    }
+    return valid[s] ?? 'inbox';
   }
 
-  moveSelectedEmails() {
-    throw new Error('Method not implemented.');
-  }
-  archiveSelectedEmails() {
-    throw new Error('Method not implemented.');
-  }
-  deleteSelectedEmails() {
-    throw new Error('Method not implemented.');
-  }
-  markSelectedAsSpam() {
-    throw new Error('Method not implemented.');
-  }
-  markSelectedAsUnread() {
-    throw new Error('Method not implemented.');
-  }
-  markSelectedAsRead() {
-    throw new Error('Method not implemented.');
-  }
-  selectAllEmails($event: Event) {
-    throw new Error('Method not implemented.');
-  }
-  selectEmail(arg0: string) {
-    throw new Error('Method not implemented.');
-  }
-
-  onPageSelected(page: number): void {
-    this.store.dispatch(updateCurrentPage({ currentPage: page }));
-    this.store
-      .pipe(select(selectCurrentPage))
-      .subscribe((currentPage: number) => {
-        this.store.dispatch(
-          loadEmails({
-            currentPage,
-            label: this.getValidLabel(this.router.url.slice(1)),
-          })
-        );
-      });
-  }
-
-  toggleStar(emailId: string) {
-    this.store.dispatch(toggleStar({ emailId }));
-  }
-
-  markAsRead(emailId: string) {
-    this.store.dispatch(markAsRead({ emailId }));
-  }
-
-  markAsUnread(emailId: string) {
-    this.store.dispatch(markAsUnread({ emailId }));
-  }
-
-  nextPage() {
-    this.store.dispatch(
-      paginateEmails({
-        direction: 'next',
-        label: this.getValidLabel(this.router.url.slice(1)),
-      })
-    );
-  }
-
-  prevPage() {
-    this.store.dispatch(
-      paginateEmails({
-        direction: 'prev',
-        label: this.getValidLabel(this.router.url.slice(1)),
-      })
-    );
-  }
-
-  toggleDropdown(event: Event) {
-    this.showDropdown = !this.showDropdown;
-    event.stopPropagation();
-  }
-
-  // async fetchEmailDetails(emailIds: string[]): Promise<void> {
-  //   const emailDetails: any[] = [];
-
-  //   for (const emailId of emailIds) {
-  //     try {
-  //       const email = await this.gmailService.getEmailById(emailId).toPromise();
-  //       const details: EmailDetails = {
-  //         id: email?.id || '',
-  //         historyId: email?.historyId || '',
-  //         internalDate: email?.internalDate || 0,
-  //         labelIds: email?.labelIds || [],
-  //         sizeEstimate: email?.sizeEstimate || 0,
-  //         snippet: email?.snippet || '',
-  //         threadId: email?.threadId || '',
-  //         payload: email?.payload || undefined,
-  //         subject:
-  //           this.getHeaderValue(email?.payload?.headers, 'Subject') || '',
-  //       };
-
-  //       emailDetails.push(details);
-  //       this.store.dispatch(saveEmailDetails({ emailDetails: details }));
-  //       this.store.dispatch(updateEmailInList({ email: details }));
-  //       this.loading = false;
-  //       // Delay between requests (e.g., 500ms)
-  //       await new Promise((resolve) => setTimeout(resolve, 500));
-  //     } catch (error) {
-  //       console.error(
-  //         `Failed to fetch details for email ID: ${emailId}`,
-  //         error
-  //       );
-  //       // Optional: Retry logic can be added here
-  //     }
-  //   }
-
-  //   // this.emails = emailDetails;
-  // }
-
-  fetchEmailDetails(emailIds: string[]) {
-    emailIds.forEach((id) => {
-      // Check if the email details are already in the store
-      this.store
-        .pipe(select(selectEmailDetailsById(id)))
-        .subscribe((details) => {
-          if (!details) {
-            // Fetch details if not already in the store
-            this.gmailService
-              .getEmailById(id)
-              .toPromise()
-              .then((email) => {
-                const emailDetails: EmailDetails = {
-                  id: email?.id || '',
-                  historyId: email?.historyId || '',
-                  internalDate: email?.internalDate || 0,
-                  labelIds: email?.labelIds || [],
-                  sizeEstimate: email?.sizeEstimate || 0,
-                  snippet: email?.snippet || '',
-                  threadId: email?.threadId || '',
-                  payload: email?.payload || undefined,
-                  label: '',
-                  date: '',
-                  isStarred: false,
-                  subject:
-                    this.getHeaderValue(email?.payload?.headers, 'Subject') ||
-                    '',
-                };
-                this.loading = false;
-                this.store.dispatch(saveEmailDetails({ emailDetails }));
-                this.store.dispatch(updateEmailInList({ email: details }));
-              })
-              .catch((error) =>
-                console.error('Error fetching email details:', error)
-              );
-          }
-        });
-    });
-  }
-
-  getHeaderValue(headers: any[] | undefined, name: string): string {
-    if (headers) {
-      const header = headers.find((header) => header.name === name);
-      return header ? header.value : 'No subject';
-    } else {
-      return 'No subject';
-    }
-  }
-
-  viewEmail(emailId: string) {
-    // Navigate to the email details component with the email ID
-    // Assuming you have routing set up for email details
-    this.router.navigate(['/inbox', emailId]);
-  }
+  // Stubs so the template doesn't break
+  selectAllEmails(_: Event): void {}
+  selectEmail(_: string): void {}
+  moveSelectedEmails(): void {}
+  archiveSelectedEmails(): void {}
+  deleteSelectedEmails(): void {}
+  markSelectedAsSpam(): void {}
+  markSelectedAsUnread(): void {}
+  markSelectedAsRead(): void {}
 }

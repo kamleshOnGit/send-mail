@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-auth-callback',
@@ -9,39 +10,36 @@ import { Router } from '@angular/router';
   styleUrl: './auth-callback.component.css',
 })
 export class AuthCallbackComponent implements OnInit {
-  constructor(private router: Router) {
-    this.router.events.subscribe((event) => {
-      console.log('Router Event:', event);
-    });
-  }
+  constructor(private router: Router, private authService: AuthService) {}
 
   ngOnInit(): void {
-    this.getAccessTokenFromUrl();
+    this.handleOAuthCallback();
   }
 
-  // Function to extract access token from the URL
-  getAccessTokenFromUrl(): void {
-    const url = window.location.href;
-    const params = new URLSearchParams(url.split('#')[1]);
-    const accessToken = params.get('access_token');
-    console.log(url);
-    if (accessToken) {
-      // Save the access token to local storage or any other storage method
-      localStorage.setItem('access_token', accessToken);
-      console.log('Access Token saved:', accessToken);
+  private handleOAuthCallback(): void {
+    // Google's implicit flow returns the token in the URL hash fragment:
+    // /auth-callback#access_token=ya29.xxx&token_type=Bearer&expires_in=3600
+    //
+    // window.location.hash gives us "#access_token=..." — strip the leading "#"
+    // and parse it as URLSearchParams.
+    const hash = window.location.hash.startsWith('#')
+      ? window.location.hash.slice(1)
+      : window.location.hash;
 
-      // Navigate to the desired page after saving the token
-      this.router
-        .navigate(['/inbox'])
-        .then((success) => {
-          console.log('Navigation to /inbox successful:', success);
-        })
-        .catch((err) => {
-          console.error('Navigation Error:', err);
-        });
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const expiresIn = params.get('expires_in');
+
+    if (accessToken) {
+      this.authService.saveToken(
+        accessToken,
+        expiresIn ? parseInt(expiresIn, 10) : 3600
+      );
+      // Clear the hash from the URL so the token isn't visible in the address bar
+      window.history.replaceState(null, '', window.location.pathname);
+      this.router.navigate(['/inbox']);
     } else {
-      console.log('Access Token not found in the URL.');
-      // Handle the error or redirect as needed
+      // No token found — send back to login
       this.router.navigate(['/login']);
     }
   }

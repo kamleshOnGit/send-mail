@@ -35,6 +35,9 @@ import {
   updateSignatureSuccess,
   resetNextPrevToken,
   setLoading,
+  cancelBulkSend,
+  goToNextPage,
+  goToPrevPage,
 } from './actions';
 import { Email, EmailDetails } from '../dataModel/email-details.model';
 
@@ -43,11 +46,11 @@ export interface State {
   emailDetails: { [key: string]: EmailDetails };
   error: any;
   loading: boolean;
-  loadingSheetData: boolean; // New loading state for fetching sheet data
-  sendingEmail: boolean; // New loading state for sending emails
-  sheetData: string[][]; // Added to store sheet data rows
-  spreadsheetId: string; //
-  emailSendingStatus: { [key: string]: string }; // Added to store the status of each email sent (success or failure)
+  loadingSheetData: boolean;
+  sendingEmail: boolean;
+  sheetData: string[][];
+  spreadsheetId: string;
+  emailSendingStatus: { [key: string]: string };
   pagination: {
     currentPage: number;
     pageSize: number;
@@ -55,8 +58,14 @@ export interface State {
     hasNextPage: boolean;
     hasPrevPage: boolean;
     nextPageToken?: string;
-    prevPageToken?: string;
+    // Stack of tokens used to reach each page.
+    // Index 0 = undefined (first page has no token).
+    // Index 1 = token used to reach page 2, etc.
+    // Pressing "Previous" pops the last token off the stack.
+    pageTokenHistory: (string | undefined)[];
   };
+  // Which label (inbox/sent/…) is currently loaded in `emails`
+  currentLabel: 'inbox' | 'sent' | 'trash' | 'draft';
 }
 
 export const initialState: State = {
@@ -64,11 +73,12 @@ export const initialState: State = {
   emailDetails: {},
   error: null,
   loading: false,
-  loadingSheetData: false, // Default to false
-  sendingEmail: false, // Default to false
-  sheetData: [], // Initialize empty sheet data
-  spreadsheetId: '' ,
-  emailSendingStatus: {}, // Initialize an empty email status object
+  loadingSheetData: false,
+  sendingEmail: false,
+  sheetData: [],
+  spreadsheetId: '',
+  emailSendingStatus: {},
+  currentLabel: 'inbox',
   pagination: {
     currentPage: 1,
     pageSize: 50,
@@ -76,238 +86,148 @@ export const initialState: State = {
     hasNextPage: false,
     hasPrevPage: false,
     nextPageToken: undefined,
-    prevPageToken: undefined,
+    pageTokenHistory: [undefined], // page 1 has no token
   },
 };
 
 const _emailReducer = createReducer(
   initialState,
+
   on(loadEmails, (state) => ({ ...state, loading: true })),
+
   on(
     loadEmailsSuccess,
-    (
-      state,
-      {
-        emails,
-        currentPage,
-        totalEmails,
-        hasNextPage,
-        hasPrevPage,
-        nextPageToken,
-        prevPageToken,
-      }
-    ) => ({
+    (state, { emails, currentPage, totalEmails, hasNextPage, nextPageToken, pageTokenHistory, label }) => ({
       ...state,
       emails,
+      currentLabel: label,
       pagination: {
         ...state.pagination,
         currentPage,
         totalEmails,
         hasNextPage,
-        hasPrevPage,
+        hasPrevPage: currentPage > 1,
         nextPageToken,
-        prevPageToken,
+        pageTokenHistory,
       },
-      // loading: false,
     })
   ),
+
   on(updateCurrentPage, (state, { currentPage }) => ({
     ...state,
-    pagination: {
-      ...state.pagination,
-      currentPage,
-    },
+    pagination: { ...state.pagination, currentPage },
   })),
 
-  on(paginateEmails, (state, { direction }) => {
-    const newPage =
-      direction === 'next'
-        ? state.pagination.currentPage + 1
-        : state.pagination.currentPage - 1;
+  // paginateEmails kept for backwards compat — effect handles navigation now
+  on(paginateEmails, (state) => ({ ...state })),
+  on(goToNextPage, (state) => ({ ...state, loading: true })),
+  on(goToPrevPage, (state) => ({ ...state, loading: true })),
 
-    return {
-      ...state,
-      pagination: {
-        ...state.pagination,
-        currentPage: newPage,
-      },
-    };
-  }),
-  on(loadEmailsFailure, (state, { error }) => ({
-    ...state,
-    error,
-    loading: false,
-  })),
+  on(loadEmailsFailure, (state, { error }) => ({ ...state, error, loading: false })),
   on(loadEmailDetails, (state) => ({ ...state, loading: true })),
   on(loadEmailDetailsSuccess, (state, { emailDetails }) => ({
     ...state,
     emailDetails: { ...state.emailDetails, [emailDetails.id]: emailDetails },
     loading: false,
   })),
-  on(loadEmailDetailsFailure, (state, { error }) => ({
+  on(loadEmailDetailsFailure, (state, { error }) => ({ ...state, error, loading: false })),
+  on(saveEmailDetails, (state, { emailDetails }) => ({
     ...state,
-    error,
-    loading: false,
-  })),
-  on(saveEmailDetails, (state, { emailDetails }) => {
-    const updatedEmails = state.emails.map((email) =>
+    emailDetails: { ...state.emailDetails, [emailDetails.id]: emailDetails },
+    emails: state.emails.map((email) =>
       email.id === emailDetails.id
-        ? { ...email, ...emailDetails, subject: emailDetails.snippet } // Update with new details
+        ? { ...email, ...emailDetails, subject: emailDetails.snippet }
         : email
-    );
-
-    return {
-      ...state,
-      emailDetails: {
-        ...state.emailDetails,
-        [emailDetails.id]: emailDetails,
-      },
-      emails: updatedEmails,
-    };
-  }),
-  on(updateEmailInList, (state, { email }) => ({
-    ...state,
-    emails: state.emails.map((e) =>
-      e.id === email.id ? { ...e, ...email } : e
     ),
   })),
-  // Sheet Data Loading Reducers
-  on(loadSheetData, (state) => ({
+  on(updateEmailInList, (state, { email }) => ({
     ...state,
-    loading: true,
-    error: null,
+    emails: state.emails.map((e) => (e.id === email.id ? { ...e, ...email } : e)),
   })),
+
+  // Sheet Data
+  on(loadSheetData, (state) => ({ ...state, loading: true, error: null })),
   on(loadSheetDataSuccess, (state, { rows }) => ({
     ...state,
     loading: false,
-    sheetData: rows, // Store fetched sheet data
+    sheetData: rows,
+    emailSendingStatus: {},
   })),
-  on(loadSheetDataFailure, (state, { error }) => ({
+  on(loadSheetDataFailure, (state, { error }) => ({ ...state, loading: false, error })),
+
+  // Email Sending
+  on(sendEmail, (state, { recipient }) => ({
     ...state,
-    loading: false,
+    emailSendingStatus: { ...state.emailSendingStatus, [recipient]: 'sending' },
+  })),
+  on(sendEmailSuccess, (state, { recipient }) => ({
+    ...state,
+    sendingEmail: false,
+    emailSendingStatus: { ...state.emailSendingStatus, [recipient]: 'success' },
+  })),
+  on(sendEmailFailure, (state, { recipient, error }) => ({
+    ...state,
+    sendingEmail: false,
+    emailSendingStatus: { ...state.emailSendingStatus, [recipient]: 'error' },
     error,
   })),
 
-  // Email Sending Reducers
-  on(sendEmail, (state, { sender, recipient }) => ({
-    ...state,
-    emailSendingStatus: {
-      ...state.emailSendingStatus,
-      [recipient]: 'sending', // Track sending status
-    },
-  })),
-  on(sendEmailSuccess, (state, { sender, recipient }) => ({
-    ...state,
-    sendingEmail: false,
-    emailSendingStatus: {
-      ...state.emailSendingStatus,
-      [recipient]: 'success',
-    },
-  })),
-  on(sendEmailFailure, (state, { sender, recipient, error }) => ({
-    ...state,
-    sendingEmail: false,
-    emailSendingStatus: {
-      ...state.emailSendingStatus,
-      [recipient]: 'error',
-    },
-    error,
-  })),
-  on(startLoadingSheetData, (state) => ({
-    ...state,
-    loadingSheetData: true,
-  })),
-  on(stopLoadingSheetData, (state) => ({
-    ...state,
-    loadingSheetData: false,
-  })),
-  on(startSendingEmail, (state) => ({
-    ...state,
-    sendingEmail: true,
-  })),
-  on(stopSendingEmail, (state) => ({
-    ...state,
-    sendingEmail: false,
-  })),
+  on(startLoadingSheetData, (state) => ({ ...state, loadingSheetData: true })),
+  on(stopLoadingSheetData, (state) => ({ ...state, loadingSheetData: false })),
+  on(startSendingEmail, (state) => ({ ...state, sendingEmail: true })),
+  on(stopSendingEmail, (state) => ({ ...state, sendingEmail: false })),
+
   on(setEmailSendingStatus, (state, { rowId, status }) => ({
     ...state,
-    emailSendingStatus: {
-      ...state.emailSendingStatus,
-      [rowId]: status,
-    },
+    emailSendingStatus: { ...state.emailSendingStatus, [rowId]: status },
   })),
+
+  on(cancelBulkSend, (state) => ({ ...state, sendingEmail: false })),
+
   on(updateSheetStatusSuccess, (state, { rowIndex, status }) => ({
     ...state,
-    emailSendingStatus: {
-      ...state.emailSendingStatus,
-      [rowIndex]: status, // Update the status in the state
-    },
-    sheetUpdateError: null, // Clear any previous error
+    emailSendingStatus: { ...state.emailSendingStatus, [rowIndex]: status },
   })),
-  on(updateSheetStatusFailure, (state, { rowIndex, error }) => ({
-    ...state,
-    sheetUpdateError: error, // Store the error in case of failure
-  })),
-  on(updateSpreadsheetId, (state, { spreadsheetId }) => ({
-    ...state,
-    spreadsheetId: spreadsheetId,
-  })),
-  // Optional: Handle success and failure if needed
-  on(updateSpreadsheetIdSuccess, (state) => ({
-    ...state,
-  })),
-  on(updateSpreadsheetIdFailure, (state, { error }) => ({
-    ...state,
-    error,
-  })),
-  on(fetchSignature, (state) => ({
-    ...state,
-    loading: true,
-  })),
+  on(updateSheetStatusFailure, (state) => ({ ...state })),
+
+  on(updateSpreadsheetId, (state, { spreadsheetId }) => ({ ...state, spreadsheetId })),
+  on(updateSpreadsheetIdSuccess, (state) => ({ ...state })),
+  on(updateSpreadsheetIdFailure, (state, { error }) => ({ ...state, error })),
+
+  on(fetchSignature, (state) => ({ ...state, loading: true })),
   on(fetchSignatureSuccess, (state, { signature }) => ({
     ...state,
     signature,
     loading: false,
     error: null,
   })),
-  on(fetchSignatureFailure, (state, { error }) => ({
-    ...state,
-    loading: false,
-    error,
-  })),
-  on(updateSignature, (state) => ({
-    ...state,
-    loading: true,
-  })),
+  on(fetchSignatureFailure, (state, { error }) => ({ ...state, loading: false, error })),
+
+  on(updateSignature, (state) => ({ ...state, loading: true })),
   on(updateSignatureSuccess, (state, { newSignature }) => ({
     ...state,
     signature: newSignature,
     loading: false,
     error: null,
   })),
-  on(updateSignatureFailure, (state, { error }) => ({
+  on(updateSignatureFailure, (state, { error }) => ({ ...state, loading: false, error })),
+
+  // Reset pagination completely — used when switching between inbox/sent/etc.
+  on(resetNextPrevToken, (state) => ({
     ...state,
-    loading: false,
-    error,
-  })),
-  on(resetNextPrevToken, (state, { nextPageToken, prevPageToken }) => ({
-    ...state, // Spread the existing state to keep other properties
     pagination: {
-      ...state.pagination, // Spread existing pagination object
-      nextPageToken: nextPageToken || undefined, // Handle resetting nextPageToken
-      prevPageToken: prevPageToken || undefined, // Handle resetting prevPageToken
+      ...state.pagination,
+      currentPage: 1,
+      hasNextPage: false,
+      hasPrevPage: false,
+      nextPageToken: undefined,
+      pageTokenHistory: [undefined],
     },
   })),
-  on(setLoading, (state, { loading }) => ({
-    ...state,
-    loading: loading,
-  }))
-);
 
+  on(setLoading, (state, { loading }) => ({ ...state, loading }))
+);
 
 export function emailReducer(state: State | undefined, action: Action) {
   return _emailReducer(state, action);
 }
-
-
-

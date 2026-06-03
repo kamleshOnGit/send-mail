@@ -1,256 +1,254 @@
-<div class="flex flex-col h-screen justify-between">
-  <!-- Full-Screen Loader for Fetching Sheet Data -->
-  <div
-    *ngIf="loadingSheetData$ | async"
-    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-  >
-    <div class="loader text-lg text-center">
-      <div class="mb-4">
-        <!-- Spinner -->
-        <svg
-          class="animate-spin h-10 w-10 text-white ms-auto me-auto"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
-      </div>
+<div class="flex flex-col min-h-screen justify-between">
+
+  <!-- Loader: Fetching Sheet Data -->
+  <div *ngIf="loadingSheetData$ | async"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div class="text-lg text-center">
+      <svg class="animate-spin h-10 w-10 text-white mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
       <p class="text-white">Fetching sheet data, please wait...</p>
     </div>
   </div>
 
-  <!-- Full-Screen Loader for Sending Emails -->
-  <div
-    *ngIf="sendingEmail$ | async"
-    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-  >
-    <div class="loader text-lg">
-      <div class="mb-4">
-        <!-- Spinner -->
-        <svg
-          class="animate-spin h-10 w-10 text-white ms-auto me-auto"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
+  <!-- Confirmation Dialog for Bulk Send -->
+  <div *ngIf="showConfirmDialog"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+    <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+      <h3 class="text-lg font-semibold text-gray-800 mb-2">Confirm Bulk Send</h3>
+      <p class="text-gray-600 mb-4">
+        You are about to send emails to <strong>{{ (sheetData$ | async)?.length || 0 }}</strong> recipient(s) from the sheet.
+        Emails will be sent with a random delay (3–10 min each) to avoid spam filters.
+        This cannot be undone. Continue?
+      </p>
+      <div class="flex gap-3 justify-end">
+        <button (click)="cancelConfirm()"
+          class="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
+          Cancel
+        </button>
+        <button (click)="confirmBulkSend()"
+          class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
+          Yes, Send All
+        </button>
       </div>
-      <p class="text-white">Sending emails, please wait...</p>
     </div>
   </div>
 
-  <!-- Header -->
   <app-header></app-header>
-  <div class="flex-grow flex items-center justify-center">
-    <div class="container mx-auto mt-6 max-w-7xl">
+
+  <div class="flex-grow bg-gray-50 py-8 px-4">
+    <div class="container mx-auto max-w-7xl">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Email Sending Box (Wider) -->
+
+        <!-- ── Left: Compose Form ─────────────────────────────────────── -->
         <div class="lg:col-span-2 bg-white shadow-md rounded-lg p-6">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">
-            Compose Email
-          </h2>
+          <h2 class="text-xl font-semibold text-gray-800 mb-5">Compose Email</h2>
+
           <form>
-            <!-- Sender Address -->
+            <!-- From (sendAs dropdown) -->
             <div class="mb-4">
-              <label
-                for="senderEmail"
-                class="block text-sm font-medium text-gray-700"
-                >From</label
-              >
-              <input
+              <label class="block text-sm font-medium text-gray-700 mb-1">From</label>
+
+              <div *ngIf="loadingSendAs" class="text-sm text-gray-400 italic">Loading addresses…</div>
+              <div *ngIf="sendAsError" class="text-sm text-red-500">{{ sendAsError }}</div>
+
+              <select *ngIf="!loadingSendAs && sendAsAddresses.length > 0"
+                name="senderEmail"
+                [(ngModel)]="senderEmail"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500">
+                <option *ngFor="let addr of sendAsAddresses" [value]="addr.sendAsEmail">
+                  {{ addr.displayName ? addr.displayName + ' <' + addr.sendAsEmail + '>' : addr.sendAsEmail }}
+                  {{ addr.isPrimary ? '(primary)' : '' }}
+                </option>
+              </select>
+
+              <!-- Fallback plain input if sendAs API failed or returned nothing -->
+              <input *ngIf="!loadingSendAs && sendAsAddresses.length === 0"
                 type="email"
-                id="senderEmail"
                 name="senderEmail"
                 [(ngModel)]="senderEmail"
                 class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter your email"
-              />
+                placeholder="your@email.com" />
+
+              <p class="mt-1 text-xs text-gray-400">
+                Only verified "Send As" aliases from your Gmail settings appear here.
+                <a href="https://mail.google.com/mail/u/0/#settings/accounts" target="_blank" class="text-indigo-500 hover:underline">
+                  Add a new address →
+                </a>
+              </p>
             </div>
 
-            <!-- Recipient Address -->
-            <div class="mb-4">
-              <label
-                for="recipientEmail"
-                class="block text-sm font-medium text-gray-700"
-                >To</label
-              >
-              <input
-                type="email"
-                id="recipientEmail"
-                name="recipientEmail"
-                [(ngModel)]="recipientEmail"
+            <!-- To -->
+            <div class="mb-3">
+              <div class="flex items-center justify-between">
+                <label class="block text-sm font-medium text-gray-700">To</label>
+                <div class="flex gap-3 text-xs text-indigo-600">
+                  <button type="button" *ngIf="!showCc" (click)="showCc = true" class="hover:underline">+ Cc</button>
+                  <button type="button" *ngIf="!showBcc" (click)="showBcc = true" class="hover:underline">+ Bcc</button>
+                </div>
+              </div>
+              <input type="email" name="recipientEmail" [(ngModel)]="recipientEmail"
                 class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter recipient email"
-              />
+                placeholder="recipient@email.com" />
+            </div>
+
+            <!-- Cc -->
+            <div class="mb-3" *ngIf="showCc">
+              <div class="flex items-center justify-between">
+                <label class="block text-sm font-medium text-gray-700">Cc</label>
+                <button type="button" (click)="showCc = false; ccEmail = ''" class="text-xs text-gray-400 hover:text-red-500">Remove</button>
+              </div>
+              <input type="email" name="ccEmail" [(ngModel)]="ccEmail"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="cc@email.com" />
+            </div>
+
+            <!-- Bcc -->
+            <div class="mb-4" *ngIf="showBcc">
+              <div class="flex items-center justify-between">
+                <label class="block text-sm font-medium text-gray-700">Bcc</label>
+                <button type="button" (click)="showBcc = false; bccEmail = ''" class="text-xs text-gray-400 hover:text-red-500">Remove</button>
+              </div>
+              <input type="email" name="bccEmail" [(ngModel)]="bccEmail"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="bcc@email.com" />
             </div>
 
             <!-- Subject -->
             <div class="mb-4">
-              <label
-                for="emailSubject"
-                class="block text-sm font-medium text-gray-700"
-                >Subject</label
-              >
-              <input
-                type="text"
-                id="emailSubject"
-                name="emailSubject"
-                [(ngModel)]="emailSubject"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <input type="text" name="emailSubject" [(ngModel)]="emailSubject"
                 class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter subject"
-              />
+                placeholder="Enter subject" />
             </div>
 
-            <!-- Email Body -->
+            <!-- Body -->
             <div class="mb-4">
-              <label
-                for="emailBody"
-                class="block text-sm font-medium text-gray-700"
-                >Message</label
-              >
-              <textarea
-                id="emailBody"
-                rows="6"
-                name="emailBody"
-                [(ngModel)]="emailBody"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter your message"
-              ></textarea>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <textarea name="emailBody" rows="7" [(ngModel)]="emailBody"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                placeholder="Enter your message (HTML is supported, e.g. &lt;b&gt;bold&lt;/b&gt;, &lt;a href=&quot;...&quot;&gt;link&lt;/a&gt;)"></textarea>
+              <p class="mt-1 text-xs text-gray-400">HTML tags are supported: &lt;b&gt;, &lt;i&gt;, &lt;a href="…"&gt;, &lt;br&gt;, etc.</p>
             </div>
 
-            <!-- Email Body -->
-            <div class="mb-4">
-              <label
-                for="signature"
-                class="block text-sm font-medium text-gray-700"
-                >Signature</label
-              >
-              <textarea
-                id="signature"
-                rows="4"
-                name="signature"
-                [(ngModel)]="signature"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter your signature"
-              ></textarea>
+            <!-- Signature -->
+            <div class="mb-5">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Signature</label>
+              <textarea name="signature" rows="3" [(ngModel)]="signature"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                placeholder="Enter your signature (HTML supported)"></textarea>
             </div>
 
             <!-- Send Button -->
             <div class="mt-4">
-              <button
-                type="button" (click)="sendEmail(senderEmail, recipientEmail,emailSubject,emailBody,signature)"
-                [disabled]=" spreadsheetId.length == 0 && (  emailSubject.length == 0 ||recipientEmail.length == 0 || emailBody.length == 0) "
-                class="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
-              >
+              <button type="button" (click)="onSendSingle()"
+                [disabled]="!canSendSingle()"
+                [ngClass]="canSendSingle()
+                  ? 'bg-green-500 hover:bg-green-600 cursor-pointer'
+                  : 'bg-gray-300 cursor-not-allowed'"
+                class="w-full text-white py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-400 transition-colors">
                 Send
               </button>
             </div>
           </form>
         </div>
 
-        <!-- Google Sheets Input Section (Narrower) -->
-        <div class="lg:col-span-1 bg-white shadow-md rounded-lg p-6">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">
-            Import from Google Sheets
-          </h2>
-          <div class="mb-4">
-            <label
-              for="googleSheetURL"
-              class="block text-sm font-medium text-gray-700"
-              >Google Sheet URL</label
-            >
-            <input
-              type="url"
-              id="googleSheetURL"
-              name="spreadsheetId"
-              [(ngModel)]="spreadsheetUrl"
-              (input)="extractSheetId(spreadsheetUrl)"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Enter Google Sheet URL"
-            />
-          </div>
+        <!-- ── Right: Google Sheets panel ────────────────────────────── -->
+        <div class="lg:col-span-1 flex flex-col gap-5">
 
-          <div class="mt-4">
-            <button
-              type="button"
-              (click)="loadSheetData(spreadsheetId, sheetRange)"
-              class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            >
-              Load Data & Send Mail
+          <!-- Import panel -->
+          <div class="bg-white shadow-md rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Bulk Send via Google Sheets</h2>
+
+            <!-- Sheet URL -->
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Google Sheet URL</label>
+              <input type="url" name="spreadsheetUrl" [(ngModel)]="spreadsheetUrl"
+                (input)="extractSheetId(spreadsheetUrl)"
+                class="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="https://docs.google.com/spreadsheets/d/…" />
+              <p class="mt-1 text-xs text-gray-400">
+                Sheet must have columns: <strong>A</strong>=Sender, <strong>B</strong>=Recipient, <strong>C</strong>=Subject, <strong>D</strong>=Body, <strong>E</strong>=Signature
+              </p>
+            </div>
+
+            <!-- Custom sheet range -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sheet Range <span class="text-gray-400 font-normal">(optional)</span></label>
+              <input type="text" name="customSheetRange" [(ngModel)]="customSheetRange"
+                class="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                [placeholder]="sheetRange" />
+              <p class="mt-1 text-xs text-gray-400">Default: <code>{{ sheetRange }}</code>. Change if your tab or columns differ.</p>
+            </div>
+
+            <!-- Load button -->
+            <button type="button" (click)="onLoadSheetClick()"
+              [disabled]="!spreadsheetId"
+              [ngClass]="spreadsheetId ? 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer' : 'bg-gray-300 cursor-not-allowed'"
+              class="w-full text-white py-2 rounded-md transition-colors mb-3">
+              Load Sheet Data
             </button>
-          </div>
-          <!-- Show status for each sent email -->
-          <div
-            *ngIf="emailSendingStatus$ | async as emailStatus"
-            class="flex items-center mt-4 flex-col"
-          >
-            <ng-container *ngFor="let row of sheetData$ | async; let i = index">
-              <!-- Adjust each row to take full width and display elements in a block style -->
-              <div class="w-full bg-white p-4 rounded-md shadow mb-4">
-                <div class="flex items-center">
-                  <!-- Email icon -->
-                  <svg
-                    class="w-5 h-5 mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
 
-                  <!-- Status message for each email -->
-                  <p
-                    class="text-lg text-sm"
-                    [ngClass]="{
-                      'text-green-500': emailStatus[row[1]] === 'success',
-                      'text-red-500': emailStatus[row[1]] === 'error'
-                    }"
-                  >
-                    {{ row[1] }} -
-                    {{
-                      emailStatus[row[1]] === "success"
-                        ? "Email Sent Successfully"
-                        : emailStatus[row[1]] === "error"
-                        ? "Failed to Send Email"
-                        : "Email is being sent"
-                    }}
-                  </p>
+            <!-- Send All button — only shown when data is loaded -->
+            <ng-container *ngIf="(sheetData$ | async)?.length">
+              <div *ngIf="!isBulkSending">
+                <button type="button" (click)="onBulkSendClick()"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors">
+                  Send to All ({{ (sheetData$ | async)?.length }} recipients)
+                </button>
+              </div>
+
+              <!-- In-progress: progress bar + cancel -->
+              <div *ngIf="isBulkSending" class="mt-2">
+                <div class="flex items-center justify-between text-sm text-gray-600 mb-1">
+                  <span>Sending {{ bulkSendDone }} / {{ bulkSendTotal }}</span>
+                  <span>{{ getProgressPercent() }}%</span>
                 </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-3">
+                  <div class="bg-blue-500 h-2 rounded-full transition-all"
+                    [style.width.%]="getProgressPercent()"></div>
+                </div>
+                <p class="text-xs text-gray-400 mb-2 text-center">
+                  Emails are queued with a random 3–10 min delay between sends.
+                </p>
+                <button type="button" (click)="cancelBulkSend()"
+                  class="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-md transition-colors">
+                  Cancel Sending
+                </button>
               </div>
             </ng-container>
           </div>
+
+          <!-- Status panel -->
+          <div class="bg-white shadow-md rounded-lg p-6"
+            *ngIf="(emailSendingStatus$ | async) as emailStatus">
+            <h3 class="text-base font-semibold text-gray-700 mb-3">Sending Status</h3>
+            <div class="space-y-2 max-h-80 overflow-y-auto">
+              <ng-container *ngFor="let row of sheetData$ | async">
+                <div *ngIf="row[1]" class="flex items-center justify-between bg-gray-50 rounded p-2 text-sm">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span class="truncate text-gray-700">{{ row[1] }}</span>
+                  </div>
+                  <span [ngClass]="getStatusClass(emailStatus[row[1]] || '')"
+                    class="flex-shrink-0 ml-2 text-xs">
+                    {{ emailStatus[row[1]] ? getStatusIcon(emailStatus[row[1]]) + ' ' + emailStatus[row[1]] : '—' }}
+                  </span>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+
         </div>
+        <!-- end right panel -->
+
       </div>
     </div>
   </div>
-  <!-- Footer -->
+
   <app-footer></app-footer>
 </div>

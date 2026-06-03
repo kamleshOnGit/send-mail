@@ -16,25 +16,31 @@ export class GmailService {
 
   // Method to create the MIME email message and encode it
   private createEmailMessage(
+    sender: string,
     recipient: string,
     subject: string,
     body: string,
-    signature: string
+    signature: string,
+    cc?: string,
+    bcc?: string
   ): string {
-    const emailLines = [
-      `To: ${recipient}`,
-      `Subject: ${subject}`,
-      'Content-Type: text/html; charset="UTF-8"',
-      'Content-Transfer-Encoding: 7bit',
-      '',
-      `<div>${body}</div>`, // Wrap body content in a div to support HTML
-      `<div>${signature}</div>`, // Wrap signature in a div for HTML content
-    ].join('\n');
+    const lines: string[] = [];
 
-    // Encode the MIME message in base64url format
-    const encodedEmail = this.base64UrlEncode(emailLines);
+    // If a verified sendAs alias is provided, include the From header
+    if (sender) {
+      lines.push(`From: ${sender}`);
+    }
+    lines.push(`To: ${recipient}`);
+    if (cc) lines.push(`Cc: ${cc}`);
+    if (bcc) lines.push(`Bcc: ${bcc}`);
+    lines.push(`Subject: ${subject}`);
+    lines.push('Content-Type: text/html; charset="UTF-8"');
+    lines.push('Content-Transfer-Encoding: 7bit');
+    lines.push('');
+    lines.push(`<div>${body}</div>`);
+    lines.push(`<div>${signature}</div>`);
 
-    return encodedEmail;
+    return this.base64UrlEncode(lines.join('\n'));
   }
 
   // Helper method to encode a string to base64url format
@@ -45,67 +51,63 @@ export class GmailService {
       .replace(/=+$/, '');
   }
 
+  private getAuthHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.getAccessToken()}`,
+    });
+  }
+
   // Method to send an email
   sendEmail(
     sender: string,
     recipient: string,
     subject: string,
     body: string,
-    signature: string
+    signature: string,
+    cc?: string,
+    bcc?: string
   ): Observable<any> {
     const url = `${this.apiUrl}users/me/messages/send`;
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.getAccessToken()}`, // Assumes you have a method to get the access token
-    });
-
-    // Create email message payload
     const emailMessage = this.createEmailMessage(
+      sender,
       recipient,
       subject,
       body,
-      signature
+      signature,
+      cc,
+      bcc
     );
-
-    // Send the POST request with the encoded email message
-    return this.http.post(url, { raw: emailMessage }, { headers });
+    return this.http.post(url, { raw: emailMessage }, { headers: this.getAuthHeaders() });
   }
 
-  getSignatures(): Observable<any> {
-    return this.http.get<any>(`${this.userSetting}`, {
-      headers: {
-        Authorization: `Bearer ${this.getAccessToken()}`,
-      },
+  // Fetch all sendAs addresses (logged-in address + any verified aliases)
+  getSendAsAddresses(): Observable<any> {
+    return this.http.get<any>(this.userSetting, {
+      headers: { Authorization: `Bearer ${this.getAccessToken()}` },
     });
   }
 
-  updateSignature(sendAsEmail: string, signature: string): Observable<any> {
-    const updateData = {
-      sendAsEmail: {
-        signature: signature,
-      },
-    };
+  // Keep old name as alias so existing effect calls still work
+  getSignatures(): Observable<any> {
+    return this.getSendAsAddresses();
+  }
 
+  updateSignature(sendAsEmail: string, signature: string): Observable<any> {
+    const updateData = { sendAsEmail: { signature } };
     return this.http.put<any>(
       `${this.userSetting}/${sendAsEmail}`,
       updateData,
-      {
-        headers: {
-          Authorization: `Bearer ${this.getAccessToken()}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${this.getAccessToken()}` } }
     );
   }
 
   // Method to get Google Sheets data
   getSheetData(spreadsheetId: string, range: string): Observable<any> {
     const url = `${this.sheetsApiUrl}${spreadsheetId}/values/${range}`;
-
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`, // Assumes you have a method to get the access token
+    return this.http.get(url, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${this.getAccessToken()}` }),
     });
-
-    return this.http.get(url, { headers });
   }
 
   updateSheetData(
@@ -114,13 +116,7 @@ export class GmailService {
     body: any
   ): Observable<any> {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`;
-
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`, // Include access token in Authorization header
-      'Content-Type': 'application/json',
-    });
-
-    return this.http.put(url, body, { headers });
+    return this.http.put(url, body, { headers: this.getAuthHeaders() });
   }
 
   // Method to get user's emails, 50 items per call
@@ -128,68 +124,46 @@ export class GmailService {
     nextPageToken?: string,
     label: 'inbox' | 'sent' | 'trash' | 'draft' = 'inbox'
   ): Observable<any> {
-    let url = `${this.apiUrl}users/me/messages?maxResults=50`; // Set maxResults to 50
-    if (nextPageToken) {
-      url += `&pageToken=${nextPageToken}`;
-    }
     const labelIdsMap = {
       inbox: 'INBOX',
       sent: 'SENT',
       trash: 'TRASH',
       draft: 'DRAFT',
     };
+    let url = `${this.apiUrl}users/me/messages?maxResults=50&labelIds=${labelIdsMap[label]}`;
+    if (nextPageToken) url += `&pageToken=${nextPageToken}`;
 
-    const labelId = labelIdsMap[label];
-    url += `&labelIds=${labelId}`; // Add label to the API cal
-
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`,
+    return this.http.get(url, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${this.getAccessToken()}` }),
     });
-    return this.http.get(url, { headers });
   }
 
   // Method to get a specific email by ID
   getEmailById(emailId: string): Observable<EmailDetails> {
     const url = `${this.apiUrl}users/me/messages/${emailId}`;
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`,
+    return this.http.get<EmailDetails>(url, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${this.getAccessToken()}` }),
     });
-    return this.http.get<EmailDetails>(url, { headers });
   }
 
   // Fetch attachment metadata
-  getAttachmentMetadata(
-    emailId: string,
-    attachmentId: string
-  ): Observable<any> {
+  getAttachmentMetadata(emailId: string, attachmentId: string): Observable<any> {
     return this.http.get<any>(
       `${this.apiUrl}/${emailId}/attachments/${attachmentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.getAccessToken()}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${this.getAccessToken()}` } }
     );
   }
 
   getAttachmentData(attachmentId: string, messageId: string): Observable<Blob> {
-    console.log(messageId, attachmentId);
     const url = `https://www.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`;
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`,
-      'Content-Type': 'application/json',
+    return this.http.get(url, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${this.getAccessToken()}` }),
+      responseType: 'blob',
     });
-
-    return this.http.get(url, { headers, responseType: 'blob' });
   }
 
   getAttachmentUrl(attachment: any, email: any): string {
-    // Construct the URL for downloading the attachment
-    return `https://www.googleapis.com/gmail/v1/users/me/messages/${
-      email.id
-    }/attachments/${
-      attachment.attachmentId
-    }?access_token=${this.getAccessToken()}`;
+    return `https://www.googleapis.com/gmail/v1/users/me/messages/${email.id}/attachments/${attachment.attachmentId}?access_token=${this.getAccessToken()}`;
   }
 
   // Method to modify labels on an email
@@ -199,74 +173,64 @@ export class GmailService {
     labelsToRemove: string[]
   ): Observable<any> {
     const url = `${this.apiUrl}users/me/messages/${emailId}/modify`;
-    const requestBody = {
-      addLabelIds: labelsToAdd,
-      removeLabelIds: labelsToRemove,
-    };
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.getAccessToken()}`,
-    });
-    return this.http.post(url, requestBody, { headers });
+    return this.http.post(
+      url,
+      { addLabelIds: labelsToAdd, removeLabelIds: labelsToRemove },
+      { headers: this.getAuthHeaders() }
+    );
   }
 
   // Method to delete an email
   deleteEmail(emailId: string): Observable<any> {
     const url = `${this.apiUrl}users/me/messages/${emailId}`;
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`,
+    return this.http.delete(url, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${this.getAccessToken()}` }),
     });
-    return this.http.delete(url, { headers });
   }
 
   // Method to list all labels
   listLabels(): Observable<any> {
     const url = `${this.apiUrl}users/me/labels`;
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`,
+    return this.http.get(url, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${this.getAccessToken()}` }),
     });
-    return this.http.get(url, { headers });
   }
 
   // Method to get a specific label by ID
   getLabelById(labelId: string): Observable<any> {
     const url = `${this.apiUrl}users/me/labels/${labelId}`;
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getAccessToken()}`,
+    return this.http.get(url, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${this.getAccessToken()}` }),
     });
-    return this.http.get(url, { headers });
   }
 
   // Method to delete emails by selected IDs
   deleteEmailsByIds(emailIds: string[]): Observable<any> {
     const url = `${this.apiUrl}users/me/messages/batchDelete`;
-    const requestBody = {
-      ids: emailIds,
-    };
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.getAccessToken()}`,
-    });
-    return this.http.post(url, requestBody, { headers });
+    return this.http.post(url, { ids: emailIds }, { headers: this.getAuthHeaders() });
+  }
+
+  // Method to mark emails as read by selected IDs
+  markEmailsAsRead(emailIds: string[]): Observable<any> {
+    const url = `${this.apiUrl}users/me/messages/batchModify`;
+    return this.http.post(
+      url,
+      { ids: emailIds, removeLabelIds: ['UNREAD'] },
+      { headers: this.getAuthHeaders() }
+    );
   }
 
   // Method to mark emails as unread by selected IDs
   markEmailsAsUnread(emailIds: string[]): Observable<any> {
     const url = `${this.apiUrl}users/me/messages/batchModify`;
-    const requestBody = {
-      ids: emailIds,
-      removeLabelIds: ['UNREAD'], // Remove the UNREAD label to mark as unread
-    };
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.getAccessToken()}`,
-    });
-    return this.http.post(url, requestBody, { headers });
+    return this.http.post(
+      url,
+      { ids: emailIds, addLabelIds: ['UNREAD'] },
+      { headers: this.getAuthHeaders() }
+    );
   }
 
-  // Method to get access token from local storage
-  private getAccessToken(): string {
-    // Retrieve the access token from local storage
+  getAccessToken(): string {
     return localStorage.getItem('access_token') || '';
   }
 }

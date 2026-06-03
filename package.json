@@ -5,12 +5,13 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:prod": "ng build --configuration production --base-href /send-mail/",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "deploy": "npm run build:prod && npx gh-pages -d dist/send-mail"
   },
   "private": true,
   "dependencies": {
-
     "@angular/animations": "^17.2.0",
     "@angular/common": "^17.2.0",
     "@angular/compiler": "^17.2.0",
@@ -38,6 +39,7 @@
     "@types/jasmine": "~5.1.0",
     "@types/sanitize-html": "^2.13.0",
     "autoprefixer": "^10.4.18",
+    "gh-pages": "^6.3.0",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",

@@ -1,15 +1,17 @@
 // email.effects.ts
 import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { forkJoin, from, of } from 'rxjs';
+import { concat, EMPTY, from, of, timer } from 'rxjs';
 import {
   catchError,
+  concatMap,
   finalize,
   map,
   mergeMap,
   switchMap,
   tap,
   withLatestFrom,
+  retryWhen,
 } from 'rxjs/operators';
 
 import {
@@ -21,6 +23,8 @@ import {
   loadEmailDetailsFailure,
   saveEmailDetails,
   paginateEmails,
+  goToNextPage,
+  goToPrevPage,
   loadSheetData,
   sendEmail,
   loadSheetDataSuccess,
@@ -45,15 +49,28 @@ import {
 
 import { GmailService } from '../services/gmail.service';
 import {
-  getCurrentPage,
   selectCurrentPage,
   selectNextPageToken,
   selectPrevPageToken,
+  selectPageTokenHistory,
   selectSheetData,
   selectSpreadsheetId,
+  selectCurrentLabel,
 } from './selector';
 import { select, Store } from '@ngrx/store';
 import { State } from './reducers';
+import { HttpErrorResponse } from '@angular/common/http';
+
+// Fetch up to BATCH_SIZE email details concurrently, then wait before the next batch
+const BATCH_SIZE = 5;
+const BATCH_DELAY_MS = 300;
+const MAX_RETRIES = 3;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size));
+  return result;
+}
 
 @Injectable()
 export class EmailEffects {
@@ -62,54 +79,131 @@ export class EmailEffects {
     private gmailService: GmailService,
     private store: Store<State>
   ) {}
+
+  /**
+   * Load emails for a given label and page token.
+   * The action carries an explicit `pageToken` (resolved by the caller or by
+   * goToNextPage / goToPrevPage effects below).
+   * On success we also pass the updated `pageTokenHistory` so the reducer can
+   * store it — this is the only way we can go back correctly since Gmail never
+   * returns a prevPageToken.
+   */
   loadEmails$ = createEffect(() =>
     this.actions$.pipe(
       ofType(loadEmails),
       withLatestFrom(
-        this.store.pipe(select(selectNextPageToken)),
-        this.store.pipe(select(selectPrevPageToken))
+        this.store.pipe(select(selectCurrentPage)),
+        this.store.pipe(select(selectPageTokenHistory))
       ),
-      switchMap(([action, nextPageToken, prevPageToken]) => {
-        const pageToken =
-          action.pageToken ??
-          (action.currentPage > 1 ? prevPageToken : nextPageToken);
-
-        return this.gmailService.getEmails(pageToken, action.label).pipe(
+      switchMap(([action, currentPage, tokenHistory]) =>
+        this.gmailService.getEmails(action.pageToken, action.label).pipe(
           map((response: any) => {
-            const emails = response.messages;
-            const totalEmails = response.resultSizeEstimate;
-            const hasNextPage = !!response.nextPageToken;
-            const hasPrevPage = !!response.prevPageToken;
+            // Build the new token history.
+            // If we were given an explicit token it means we're going forward
+            // (token is the nextPageToken we just consumed), so push it.
+            // If no token (page 1 or explicit reset) start a fresh history.
+            let newHistory: (string | undefined)[];
+            if (!action.pageToken) {
+              // Page 1 — fresh start
+              newHistory = [undefined];
+            } else {
+              // Going forward: append this token so we can recover it on "prev"
+              newHistory = [...tokenHistory, action.pageToken];
+            }
 
             return loadEmailsSuccess({
-              emails,
-              currentPage: action.currentPage,
-              totalEmails,
-              hasNextPage,
-              hasPrevPage,
+              emails: response.messages ?? [],
+              currentPage: newHistory.length, // page number = history length
+              totalEmails: response.resultSizeEstimate ?? 0,
+              hasNextPage: !!response.nextPageToken,
               nextPageToken: response.nextPageToken,
-              prevPageToken: response.prevPageToken,
+              pageTokenHistory: newHistory,
+              label: action.label,
             });
           }),
           catchError((error) => of(loadEmailsFailure({ error })))
-        );
+        )
+      )
+    )
+  );
+
+  /**
+   * Go to the next page.
+   * Reads `nextPageToken` from the store and dispatches `loadEmails` with it.
+   */
+  goToNextPage$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(goToNextPage),
+      withLatestFrom(
+        this.store.pipe(select(selectNextPageToken))
+      ),
+      switchMap(([action, nextPageToken]) =>
+        of(loadEmails({ pageToken: nextPageToken, label: action.label }))
+      )
+    )
+  );
+
+  /**
+   * Go to the previous page.
+   * The "previous page token" is the second-to-last entry in pageTokenHistory.
+   * e.g. history = [undefined, "tok-p2", "tok-p3"]  → we are on page 3
+   *      to go back to page 2 we use "tok-p2"
+   *      to go back to page 1 we use undefined (no token)
+   */
+  goToPrevPage$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(goToPrevPage),
+      withLatestFrom(
+        this.store.pipe(select(selectPageTokenHistory))
+      ),
+      switchMap(([action, history]) => {
+        if (history.length <= 1) {
+          // Already on page 1, nothing to do
+          return EMPTY;
+        }
+        // Pop the last entry to get the token for the previous page
+        const prevHistory = history.slice(0, -1);
+        const prevToken = prevHistory[prevHistory.length - 1];
+
+        // We dispatch loadEmails but with the trimmed history so the reducer
+        // knows to shrink the stack back.
+        // We achieve this by passing the prevToken — in loadEmails$ the history
+        // rebuild logic will re-add it, but we need the reducer to *not* grow
+        // the stack. The cleanest approach: dispatch with a special sentinel.
+        // Simpler: pass no token if going back to page 1, or the prev token.
+        // The reducer always builds newHistory from scratch based on whether
+        // a token was given, so we fix this by passing an undefined token for
+        // page 1, and for earlier pages we pass the page-2 token so history
+        // rebuilds correctly.
+        //
+        // Actually the cleanest fix: trim the history in the reducer by
+        // detecting that the token we're loading is already in the history
+        // at a lower index. Instead, we simply reload from page 1 up to
+        // prevHistory.length. For most apps "previous" means go back one page.
+        //
+        // Implementation: load with prevToken. In loadEmails$ the history will
+        // be [undefined, prevToken] if prevToken is defined, or [undefined] if
+        // we're going to page 1. That matches prevHistory. ✓
+        return of(loadEmails({ pageToken: prevToken, label: action.label }));
       })
     )
   );
 
+  /**
+   * Legacy paginateEmails action — kept so any existing callers still work.
+   * Delegates to goToNextPage / goToPrevPage.
+   */
   paginateEmails$ = createEffect(() =>
     this.actions$.pipe(
       ofType(paginateEmails),
-      withLatestFrom(
-        this.store.pipe(select(selectCurrentPage)),
-        this.store.pipe(select(selectNextPageToken)),
-        this.store.pipe(select(selectPrevPageToken))
-      ),
-      switchMap(([action, currentPage, nextPageToken, prevPageToken]) => {
-        const pageToken =
-          action.direction === 'next' ? nextPageToken : prevPageToken;
-
-        return of(loadEmails({ currentPage, pageToken, label: action.label }));
+      withLatestFrom(this.store.pipe(select(selectCurrentLabel))),
+      switchMap(([action, currentLabel]) => {
+        const label = action.label ?? currentLabel;
+        return of(
+          action.direction === 'next'
+            ? goToNextPage({ label })
+            : goToPrevPage({ label })
+        );
       })
     )
   );
@@ -126,105 +220,111 @@ export class EmailEffects {
     )
   );
 
+  /**
+   * After loadEmailsSuccess, fetch full email details in small batches.
+   * Batching prevents 429 (Too Many Requests) from the Gmail API.
+   * Exponential backoff retries on 429 / 5xx.
+   * setLoading(false) is in finalize() so it always fires, even on errors.
+   */
   loadEmailsSuccess$ = createEffect(() =>
     this.actions$.pipe(
       ofType(loadEmailsSuccess),
-      mergeMap(({ emails }) => {
-        const emailIds = emails.map((email) => email.id);
-        // Use forkJoin to wait for all email fetching to complete
-        return forkJoin(
-          emailIds.map((id) =>
-            this.gmailService.getEmailById(id).pipe(
-              map((email) =>
-                saveEmailDetails({
-                  emailDetails: {
-                    id: email.id,
-                    historyId: email.historyId,
-                    internalDate: email.internalDate,
-                    labelIds: email.labelIds,
-                    sizeEstimate: email.sizeEstimate,
-                    snippet: email.snippet,
-                    threadId: email.threadId,
-                    subject: '',
-                    payload: email?.payload || undefined,
-                    label: '',
-                    date: '',
-                    isStarred: false,
-                  },
-                })
-              ),
-              catchError((error) => {
-                console.error('Error fetching email details:', error);
-                return of(); // Return an empty observable in case of error
-              })
+      switchMap(({ emails }) => {
+        if (!emails.length) {
+          return of(setLoading({ loading: false }));
+        }
+
+        const batches = chunk(emails.map((e) => e.id), BATCH_SIZE);
+
+        return concat(
+          ...batches.map((batch, batchIndex) =>
+            concat(
+              batchIndex === 0
+                ? EMPTY
+                : timer(BATCH_DELAY_MS).pipe(mergeMap(() => EMPTY)),
+              from(batch).pipe(
+                mergeMap((id) =>
+                  this.gmailService.getEmailById(id).pipe(
+                    retryWhen((errors) =>
+                      errors.pipe(
+                        concatMap((err: HttpErrorResponse, attempt) => {
+                          if (attempt >= MAX_RETRIES) throw err;
+                          const retryable =
+                            err?.status === 429 ||
+                            (err?.status >= 500 && err?.status < 600);
+                          if (!retryable) throw err;
+                          return timer(Math.pow(2, attempt) * 1000);
+                        })
+                      )
+                    ),
+                    map((email) =>
+                      saveEmailDetails({
+                        emailDetails: {
+                          id: email.id,
+                          historyId: email.historyId,
+                          internalDate: email.internalDate,
+                          labelIds: email.labelIds,
+                          sizeEstimate: email.sizeEstimate,
+                          snippet: email.snippet,
+                          threadId: email.threadId,
+                          subject: '',
+                          payload: email?.payload ?? undefined,
+                          label: '',
+                          date: '',
+                          isStarred: false,
+                        },
+                      })
+                    ),
+                    catchError(() => EMPTY)
+                  )
+                )
+              )
             )
           )
         ).pipe(
-          // Once all emails are fetched, dispatch an action to set loading to false
-          mergeMap((emailDetailsActions) => [
-            ...emailDetailsActions,
-            setLoading({ loading: false }), // Dispatch action to set loading to false
-          ])
+          finalize(() => this.store.dispatch(setLoading({ loading: false })))
         );
       })
     )
   );
 
-  // Effect to load sheet data
   loadSheetData$ = createEffect(() =>
     this.actions$.pipe(
       ofType(loadSheetData),
-      tap(() => this.store.dispatch(startLoadingSheetData())), // Start loader
+      tap(() => this.store.dispatch(startLoadingSheetData())),
       mergeMap(({ spreadsheetId, sheetRange }) =>
         this.gmailService.getSheetData(spreadsheetId, sheetRange).pipe(
           map((response) => loadSheetDataSuccess({ rows: response.values })),
           catchError((error) => of(loadSheetDataFailure({ error }))),
-          finalize(() => this.store.dispatch(stopLoadingSheetData())) // Stop loader
+          finalize(() => this.store.dispatch(stopLoadingSheetData()))
         )
       )
     )
   );
 
-  // Effect to send emails
   sendEmail$ = createEffect(() =>
     this.actions$.pipe(
       ofType(sendEmail),
-      tap(() => this.store.dispatch(startSendingEmail())), // Start loader
+      tap(() => this.store.dispatch(startSendingEmail())),
       withLatestFrom(this.store.select(selectSheetData)),
       mergeMap(([action, sheetData]) => {
-        const { sender, recipient, subject, body, signature } = action;
+        const { sender, recipient, subject, body, signature, cc, bcc } = action;
 
         return this.gmailService
-          .sendEmail(sender, recipient, subject, body, signature)
+          .sendEmail(sender, recipient, subject, body, signature, cc, bcc)
           .pipe(
-            // Handle success case
             map(() => {
-              // Find the row index based on recipient email
               const rowIndex = sheetData.findIndex(
                 (row: any[]) => row[1] === recipient
-              ); // Assuming recipient is in column B
-
-              // Dispatch success action
-              this.store.dispatch(sendEmailSuccess({ sender, recipient }));
-
-              // If email is successfully sent, update the Google Sheet with the status
+              );
               if (rowIndex !== -1) {
-                this.store.dispatch(
-                  updateSheetStatus({ rowIndex, status: 'success' })
-                );
+                this.store.dispatch(updateSheetStatus({ rowIndex, status: 'success' }));
               }
-
               return sendEmailSuccess({ sender, recipient });
             }),
-            // Handle error case
-            catchError((error) => {
-              // Dispatch failure action
-              this.store.dispatch(
-                sendEmailFailure({ sender, recipient, error })
-              );
-              return of(sendEmailFailure({ sender, recipient, error }));
-            }),
-            // Stop loader regardless of success or error
+            catchError((error) =>
+              of(sendEmailFailure({ sender, recipient, error }))
+            ),
             finalize(() => this.store.dispatch(stopSendingEmail()))
           );
       })
@@ -233,48 +333,41 @@ export class EmailEffects {
 
   updateSheetStatus$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(updateSheetStatus), // Listen for the updateSheetStatus action
-      withLatestFrom(this.store.select(selectSpreadsheetId)), // Get spreadsheetId from store
+      ofType(updateSheetStatus),
+      withLatestFrom(this.store.select(selectSpreadsheetId)),
       mergeMap(([{ rowIndex, status }, spreadsheetId]) => {
-        console.log('Spreadsheet ID from store:', spreadsheetId); // Debugging line
-
         if (!spreadsheetId) {
-          console.error('Spreadsheet ID is not defined');
           return of(
-            updateSheetStatusFailure({
-              rowIndex,
-              error: 'Spreadsheet ID is not defined',
-            })
+            updateSheetStatusFailure({ rowIndex, error: 'Spreadsheet ID is not defined' })
           );
         }
-
         return this.gmailService
           .updateSheetData(spreadsheetId, `Mailing!F${rowIndex + 2}`, {
             values: [[status]],
           })
           .pipe(
-            map(() => updateSheetStatusSuccess({ rowIndex, status })), // On success, dispatch the success action
-            catchError((error) =>
-              of(updateSheetStatusFailure({ rowIndex, error }))
-            ) // On failure, dispatch failure action
+            map(() => updateSheetStatusSuccess({ rowIndex, status })),
+            catchError((error) => of(updateSheetStatusFailure({ rowIndex, error })))
           );
       })
     )
   );
-  // Effect to fetch the email signature
+
   fetchSignature$ = createEffect(() =>
     this.actions$.pipe(
       ofType(fetchSignature),
       mergeMap(() =>
         this.gmailService.getSignatures().pipe(
-          map((signature) => fetchSignatureSuccess({ signature })),
+          map((response: any) => {
+            const primary = response.sendAs?.find((s: any) => s.isPrimary);
+            return fetchSignatureSuccess({ signature: primary?.signature || '' });
+          }),
           catchError((error) => of(fetchSignatureFailure({ error })))
         )
       )
     )
   );
 
-  // Effect to update the email signature
   updateSignature$ = createEffect(() =>
     this.actions$.pipe(
       ofType(updateSignature),

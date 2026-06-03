@@ -1,12 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { HeaderComponent } from '../shared/header/header.component';
 import { FooterComponent } from '../shared/footer/footer.component';
 import { GmailService } from '../services/gmail.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { concatMap, delay, from, Observable, of } from 'rxjs';
+import { concatMap, delay, Observable, of, Subject, Subscription } from 'rxjs';
+import { from, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
 import {
+  cancelBulkSend,
   loadSheetData,
   sendEmail,
   setEmailSendingStatus,
@@ -19,6 +21,14 @@ import {
   selectSheetData,
 } from '../dataStore/selector';
 
+export interface SendAsAddress {
+  sendAsEmail: string;
+  displayName?: string;
+  isPrimary?: boolean;
+  isDefault?: boolean;
+  verificationStatus?: string;
+}
+
 @Component({
   selector: 'app-sending-mail',
   standalone: true,
@@ -26,250 +36,240 @@ import {
   styleUrl: './sending-mail.component.css',
   imports: [HeaderComponent, FooterComponent, CommonModule, FormsModule],
 })
-export class SendingMailComponent {
+export class SendingMailComponent implements OnInit, OnDestroy {
+  // Form fields
   senderEmail = '';
   recipientEmail = '';
+  ccEmail = '';
+  bccEmail = '';
   emailSubject = '';
   emailBody = '';
   signature = '';
-  spreadsheetId = ''; // The Google Spreadsheet ID
-  spreadsheetUrl = ''; // The Google Spreadsheet ID
-  sheetRange = 'Mailing!A2:E'; // Assuming columns are in A2:D (Sender, Recipient, Subject, Body)
-  loadingSheetData$: Observable<boolean> | undefined;
-  sendingEmail$: Observable<boolean> | undefined;
-  emailSendingStatus$: Observable<{ [key: string]: string }> | undefined;
-  sheetData$: Observable<string[][]> | undefined;
-  isButtonDisabled: boolean = true;
+  showCc = false;
+  showBcc = false;
+
+  // Google Sheets
+  spreadsheetId = '';
+  spreadsheetUrl = '';
+  sheetRange = 'Mailing!A2:F'; // A=sender, B=recipient, C=subject, D=body, E=signature, F=status
+  customSheetRange = ''; // let user override the range
+
+  // sendAs aliases
+  sendAsAddresses: SendAsAddress[] = [];
+  loadingSendAs = false;
+  sendAsError = '';
+
+  // Store observables
+  loadingSheetData$!: Observable<boolean>;
+  sendingEmail$!: Observable<boolean>;
+  emailSendingStatus$!: Observable<{ [key: string]: string }>;
+  sheetData$!: Observable<string[][]>;
+
+  // Bulk send state
+  bulkSendTotal = 0;
+  bulkSendDone = 0;
+  isBulkSending = false;
+  bulkCancelSubject = new Subject<void>();
+
+  // Confirmation dialog
+  showConfirmDialog = false;
+  pendingBulkSend = false;
+
+  // Subscriptions to clean up
+  private subscriptions = new Subscription();
 
   constructor(private gmailService: GmailService, private store: Store) {}
 
   ngOnInit(): void {
-    //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
-    //Add 'implements OnInit' to the class.
-    // Subscribe to sheet data in the component
-
     this.sheetData$ = this.store.select(selectSheetData);
     this.loadingSheetData$ = this.store.select(selectLoadingSheetData);
     this.sendingEmail$ = this.store.select(selectSendingEmail);
     this.emailSendingStatus$ = this.store.select(selectEmailSendingStatus);
-    this.store.select(selectSheetData).subscribe((rows) => {
-      if (rows && rows.length) {
-        from(rows)
-          .pipe(
-            concatMap((row: any, i: number) => {
-              if (row.length >= 4) {
-                const [sender, recipient, subject, body, signature] = row;
-                console.log(row);
-                // Update compose box fields
-                this.senderEmail = sender;
-                this.recipientEmail = recipient;
-                this.emailSubject = subject;
-                this.emailBody = body;
-                this.signature = signature;
-                this.store.dispatch(
-                  setEmailSendingStatus({ rowId: recipient, status: 'sending' })
-                );
-                // Simulate a random delay between 3 and 10 minutes
-                const delayTime = this.getRandomDelay();
 
-                return of(null).pipe(
-                  delay(delayTime),
-                  concatMap(() => {
-                    // Dispatch sendEmail action instead of setting component properties
-                    this.store.dispatch(
-                      sendEmail({ sender, recipient, subject, body, signature })
-                    );
-                    return of(null); // Ensure an observable is returned
-                  })
-                );
-              } else {
-                return of(null);
-              }
-            })
-          )
-          .subscribe(
-            () => console.log('Email sent successfully'),
-            (error: any) => console.error('Error sending email', error)
-          );
-      }
+    this.loadSendAsAddresses();
+  }
+
+  ngOnDestroy(): void {
+    // Clean up all subscriptions to prevent memory leaks
+    this.subscriptions.unsubscribe();
+    this.bulkCancelSubject.complete();
+  }
+
+  // ── sendAs / From address ────────────────────────────────────────────────
+
+  loadSendAsAddresses(): void {
+    this.loadingSendAs = true;
+    this.sendAsError = '';
+    const sub = this.gmailService.getSendAsAddresses().subscribe({
+      next: (response: any) => {
+        this.sendAsAddresses = (response.sendAs || []).filter(
+          (s: SendAsAddress) => s.verificationStatus === 'accepted' || s.isPrimary
+        );
+        // Pre-select the default/primary address
+        const def =
+          this.sendAsAddresses.find((s) => s.isDefault) ||
+          this.sendAsAddresses.find((s) => s.isPrimary);
+        if (def) this.senderEmail = def.sendAsEmail;
+        this.loadingSendAs = false;
+      },
+      error: () => {
+        this.sendAsError = 'Could not load send-as addresses.';
+        this.loadingSendAs = false;
+      },
     });
-    // Subscribe to email sending status
-    this.store.select(selectEmailSendingStatus).subscribe((status) => {
-      console.log(
-        status,
-        Object.values(status).every((e) => e == 'success')
-      );
-      if (
-        this.spreadsheetId.length == 0 &&
-        Object.values(status).every((e) => e == 'success')
-      ) {
-        this.senderEmail = '';
-        this.recipientEmail = '';
-        this.emailSubject = '';
-        this.emailBody = '';
-        this.signature = '';
-      }
-      // const keys = Object.keys(status);
-      // const values = Object.values(status);
-
-      // if (keys.length > 0) {
-      //   const email = keys[keys.length - 1]; // Get the email associated with the status
-      //   const value = values[values.length - 1]; // Get the corresponding status
-
-      //   // First, check if sheetData$ is defined and has values
-      //   if (this.sheetData$) {
-      //     this.sheetData$.subscribe((sheetData) => {
-      //       if (sheetData && sheetData.length > 0) {
-      //         // Ensure sheetData is not empty
-      //         // Find the correct row index based on the email
-      //         const rowIndex = sheetData.findIndex((row) => row[1] === email); // Assuming the recipient email is in column B
-
-      //         // Check if rowIndex is valid and status is "success"
-      //         if (rowIndex !== -1 && value === 'success') {
-      //           console.log('Email sending status:', status, rowIndex, value);
-
-      //           // Call updateSheetWithStatus to update the Google Sheet with status in column E
-      //           this.updateSheetWithStatus(rowIndex + 2, value).subscribe(
-      //             // Adding 2 because sheet rows are 1-indexed
-      //             (response) => {
-      //               console.log(
-      //                 `Sheet updated for row ${rowIndex + 2}:`,
-      //                 response
-      //               );
-      //             },
-      //             (error) => {
-      //               console.error(
-      //                 `Failed to update sheet for row ${rowIndex + 2}:`,
-      //                 error
-      //               );
-      //             }
-      //           );
-      //         } else if (rowIndex === -1) {
-      //           console.error('Row index is not found for email:', email);
-      //         } else if (value !== 'success') {
-      //           console.warn(
-      //             `Email status is ${value}, skipping sheet update.`
-      //           );
-      //         }
-      //       } else {
-      //         console.warn('Sheet data is empty.');
-      //       }
-      //     });
-      //   } else {
-      //     console.warn('sheetData$ is undefined.');
-      //   }
-      // }
-    });
+    this.subscriptions.add(sub);
   }
 
-  // updateSheetWithStatus(rowIndex: number, status: string): Observable<any> {
-  //   const range = `Mailing!E${rowIndex}`; // Assuming status is written in column E
-  //   const body = {
-  //     values: [[status]], // Status is being written in the respective row
-  //   };
+  // ── Single email send ────────────────────────────────────────────────────
 
-  //   return this.gmailService.updateSheetData(this.spreadsheetId, range, body);
-  // }
-
-  extractSheetId(url: string): void {
-    const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
-    const matches = url.match(regex);
-    console.log(matches);
-    if (matches && matches[1]) {
-      const spreadsheetId = matches[1];
-      this.spreadsheetId = spreadsheetId;
-      this.store.dispatch(updateSpreadsheetId({ spreadsheetId: matches[1] }));
-      console.log('Sheet ID:', spreadsheetId);
-    } else {
-      console.error('Invalid Google Sheet URL');
-    }
-  }
-
-  // Dispatch the action to load sheet data
-  loadSheetData(spreadsheetId: string, sheetRange: string) {
-    this.store.dispatch(loadSheetData({ spreadsheetId, sheetRange }));
-  }
-
-  // Dispatch the action to send email
-  sendEmail(
-    sender: string,
-    recipient: string,
-    subject: string,
-    body: string,
-    signature: string
-  ) {
-    this.store.dispatch(
-      sendEmail({ sender, recipient, subject, body, signature })
+  canSendSingle(): boolean {
+    return (
+      this.recipientEmail.trim().length > 0 &&
+      this.emailSubject.trim().length > 0 &&
+      this.emailBody.trim().length > 0
     );
   }
 
-  // loadSheetData() {
-  //   this.gmailService
-  //     .getSheetData(this.spreadsheetId, this.sheetRange)
-  //     .subscribe(
-  //       (response) => {
-  //         console.log('Sheet data:', response);
-  //         // Process the rows here
-  //         const rows = response.values;
-
-  //         from(rows)
-  //           .pipe(
-  //             concatMap((row:any) => {
-  //               if (row.length >= 4) {
-  //                 const [sender, recipient, subject, body] = row;
-  //                 // Update compose box fields
-  //                 this.senderEmail = sender;
-  //                 this.recipientEmail = recipient;
-  //                 this.emailSubject = subject;
-  //                 this.emailBody = body;
-
-  //                 // Simulate a random delay between 3 and 10 minutes
-  //                 const delayTime = this.getRandomDelay();
-
-  //                 return of(null).pipe(
-  //                   delay(delayTime),
-  //                   concatMap(async () => this.sendEmails(
-  //                     this.senderEmail,
-  //                     this.recipientEmail,
-  //                     this.emailSubject,
-  //                     this.emailBody
-  //                   )
-  //                   )
-  //                 );
-  //               } else {
-  //                 // Return an empty observable if the row does not have enough columns
-  //                 return of(null);
-  //               }
-  //             })
-  //           )
-  //           .subscribe(
-  //             () => console.log('Email sent successfully'),
-  //             (error: any) => console.error('Error sending email', error)
-  //           );
-  //       },
-  //       (error) => {
-  //         console.error('Error fetching sheet data', error);
-  //       }
-  //     );
-  // }
-
-  // Helper method to get a random delay between 3 and 10 minutes
-  private getRandomDelay(): number {
-    const min = 0 * 60 * 1000; // 3 minutes in milliseconds
-    const max = 1 * 60 * 1000; // 10 minutes in milliseconds
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+  onSendSingle(): void {
+    if (!this.canSendSingle()) return;
+    this.store.dispatch(
+      sendEmail({
+        sender: this.senderEmail,
+        recipient: this.recipientEmail,
+        subject: this.emailSubject,
+        body: this.emailBody,
+        signature: this.signature,
+        cc: this.ccEmail || undefined,
+        bcc: this.bccEmail || undefined,
+      })
+    );
   }
 
-  // // Send emails for each row of data
-  // sendEmails(sender: string, recipient: string, subject: string, body: string) {
-  //   // Send email
-  //   this.gmailService.sendEmail(sender, recipient, subject, body).subscribe(
-  //     (response) => {
-  //       console.log('Email sent successfully', response);
-  //     },
-  //     (error) => {
-  //       console.error('Error sending email', error);
-  //     }
-  //   );
-  // }
+  // ── Sheet URL parsing ────────────────────────────────────────────────────
+
+  extractSheetId(url: string): void {
+    const matches = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (matches?.[1]) {
+      this.spreadsheetId = matches[1];
+      this.store.dispatch(updateSpreadsheetId({ spreadsheetId: matches[1] }));
+    }
+  }
+
+  get effectiveSheetRange(): string {
+    return this.customSheetRange.trim() || this.sheetRange;
+  }
+
+  // ── Bulk send (with confirm + cancel + progress) ─────────────────────────
+
+  onLoadSheetClick(): void {
+    if (!this.spreadsheetId) return;
+    this.store.dispatch(
+      loadSheetData({ spreadsheetId: this.spreadsheetId, sheetRange: this.effectiveSheetRange })
+    );
+  }
+
+  onBulkSendClick(): void {
+    this.showConfirmDialog = true;
+  }
+
+  confirmBulkSend(): void {
+    this.showConfirmDialog = false;
+    this.startBulkSend();
+  }
+
+  cancelConfirm(): void {
+    this.showConfirmDialog = false;
+  }
+
+  cancelBulkSend(): void {
+    this.bulkCancelSubject.next();
+    this.isBulkSending = false;
+    this.store.dispatch(cancelBulkSend());
+  }
+
+  private startBulkSend(): void {
+    // Re-create cancel subject for this run
+    this.bulkCancelSubject = new Subject<void>();
+
+    const sub = this.sheetData$.subscribe((rows) => {
+      if (!rows?.length) return;
+
+      const validRows = rows.filter((r) => r.length >= 4);
+      this.bulkSendTotal = validRows.length;
+      this.bulkSendDone = 0;
+      this.isBulkSending = true;
+
+      const bulkSub = from(validRows)
+        .pipe(
+          concatMap((row: string[]) => {
+            const [sender, recipient, subject, body, signature] = row;
+
+            // Show current row in preview
+            this.senderEmail = sender || this.senderEmail;
+            this.recipientEmail = recipient;
+            this.emailSubject = subject;
+            this.emailBody = body;
+            this.signature = signature || '';
+
+            this.store.dispatch(
+              setEmailSendingStatus({ rowId: recipient, status: 'sending' })
+            );
+
+            const delayTime = this.getRandomDelay();
+            return of(null).pipe(
+              delay(delayTime),
+              concatMap(() => {
+                this.store.dispatch(
+                  sendEmail({
+                    sender: sender || this.senderEmail,
+                    recipient,
+                    subject,
+                    body,
+                    signature: signature || '',
+                  })
+                );
+                this.bulkSendDone++;
+                return of(null);
+              })
+            );
+          }),
+          takeUntil(this.bulkCancelSubject)
+        )
+        .subscribe({
+          complete: () => {
+            this.isBulkSending = false;
+          },
+          error: () => {
+            this.isBulkSending = false;
+          },
+        });
+
+      this.subscriptions.add(bulkSub);
+    });
+
+    // Take only one snapshot of sheetData then unsubscribe
+    sub.unsubscribe();
+  }
+
+  getRandomDelay(): number {
+    // Random delay between 3 and 10 minutes (in ms)
+    return Math.floor(Math.random() * (10 - 3 + 1) + 3) * 60 * 1000;
+  }
+
+  getProgressPercent(): number {
+    if (!this.bulkSendTotal) return 0;
+    return Math.round((this.bulkSendDone / this.bulkSendTotal) * 100);
+  }
+
+  getStatusIcon(status: string): string {
+    if (status === 'success') return '✓';
+    if (status === 'error') return '✗';
+    return '…';
+  }
+
+  getStatusClass(status: string): string {
+    if (status === 'success') return 'text-green-600 font-semibold';
+    if (status === 'error') return 'text-red-600 font-semibold';
+    return 'text-yellow-500';
+  }
 }

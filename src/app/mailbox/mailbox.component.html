@@ -1,58 +1,34 @@
 <div class="flex flex-col h-screen justify-between">
   <!-- Header -->
   <app-header></app-header>
-  <!-- <div class="flex-grow flex items-center justify-center"> 
- 
-    <div class="text-start">
-     <div *ngIf="loading">Loading emails...</div>
 
-      <ul *ngIf="!loading && emails$">
-        <li *ngFor="let email of emails$ |async">
-          <a (click)="viewEmail(email.id)">{{  email.subject  }}</a>
-        </li>
-      </ul>
-
-      <div *ngIf="!loading && !emails$">
-        No emails found.
-      </div>
-    </div>
-    </div> -->
+  <!-- Loader -->
   <div
     *ngIf="loading"
     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
   >
     <div class="loader text-lg text-center">
       <div class="mb-4">
-        <!-- Spinner -->
         <svg
           class="animate-spin h-10 w-10 text-white ms-auto me-auto"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
         >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
       </div>
-      <p class="text-white">Fetching sheet data, please wait...</p>
+      <p class="text-white">Loading emails, please wait...</p>
     </div>
   </div>
+
   <div class="h-100 bg-gray-100 p-4">
     <div class="flex">
       <!-- Sidebar -->
       <div class="w-1/6 bg-white shadow-lg p-4">
-        <button (click)="sendSingle()"
+        <button
+          (click)="sendSingle()"
           class="w-full text-white bg-blue-500 hover:bg-blue-600 rounded-lg py-2 mb-4"
         >
           Compose
@@ -62,15 +38,8 @@
             (click)="navigateTo('inbox')"
             class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
           >
-            <svg
-              class="w-5 h-5 mr-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             Inbox
           </li>
@@ -78,179 +47,94 @@
             (click)="navigateTo('sent')"
             class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
           >
-            <svg
-              class="w-5 h-5 mr-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M16 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l7-3 7 3z" />
             </svg>
             Sent
           </li>
-          <!-- Add more menu items here -->
         </ul>
       </div>
 
       <!-- Main content -->
       <div class="w-5/6 ml-4">
-        <!-- Email List -->
         <div class="bg-white shadow-lg rounded-lg overflow-hidden">
           <div class="p-4 border-b">
             <h2 class="text-lg font-semibold text-gray-800">Emails</h2>
           </div>
-          <!-- <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center space-x-4 px-2">
-           
-              <input
-                type="checkbox"
-                class="form-checkbox text-blue-600 h-4 w-4"
-                (change)="selectAllEmails($event)"
-              />
 
-             
-              <div class="relative">
-                <button
-                  class="text-blue-500 hover:underline"
-                  (focus)="showDropdown = true"
-                  (blur)="showDropdown = false"
-                >
-                  Actions
-                </button>
-                <div
-                  *ngIf="showDropdown"
-                  class="absolute left-0 mt-2 w-48 bg-white border rounded shadow-lg"
-                  (mouseenter)="showDropdown = true"
-                  (mouseleave)="showDropdown = false"
-                >
-                  <ul>
-                    <li>
-                      <button
-                        (click)="markSelectedAsRead()"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Mark as Read
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        (click)="markSelectedAsUnread()"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Mark as Unread
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        (click)="markSelectedAsSpam()"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Mark as Spam
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        (click)="deleteSelectedEmails()"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Delete
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        (click)="archiveSelectedEmails()"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Archive
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        (click)="moveSelectedEmails()"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Move to
-                      </button>
-                    </li>
-                  </ul>
+          <!-- Email list -->
+          <ng-container *ngIf="(emails$ | async) as emails">
+            <ng-container *ngIf="emails.length > 0; else noEmails">
+              <div
+                *ngFor="let email of emails"
+                class="flex justify-between items-start border-b py-3 px-2 hover:bg-gray-50 cursor-pointer"
+                (click)="viewEmail(email.id)"
+              >
+                <!-- Left: checkbox + star -->
+                <div class="flex items-center space-x-3 shrink-0" (click)="$event.stopPropagation()">
+                  <input
+                    type="checkbox"
+                    class="form-checkbox text-blue-600 h-4 w-4"
+                    (change)="selectEmail(email.id)"
+                  />
+                  <svg
+                    (click)="toggleStar(email.id)"
+                    class="w-5 h-5 cursor-pointer shrink-0"
+                    [attr.fill]="email.isStarred ? '#facc15' : 'none'"
+                    [attr.stroke]="email.isStarred ? '#facc15' : '#9ca3af'"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    stroke-width="1.5"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.914c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.518-4.674z" />
+                  </svg>
+                </div>
+
+                <!-- Center: snippet / subject -->
+                <div class="flex-grow text-left ml-3 min-w-0">
+                  <p class="text-sm font-semibold text-gray-800 truncate">{{ email.subject || '(no subject)' }}</p>
+                  <p class="text-xs text-gray-500 truncate">{{ email.snippet }}</p>
+                </div>
+
+                <!-- Right: date -->
+                <div class="text-xs text-gray-400 shrink-0 ml-3">
+                  {{ email.date | date : 'MMM d' }}
                 </div>
               </div>
+            </ng-container>
+          </ng-container>
 
-            
-            </div>
-          </div> -->
-
-          <!-- Email List -->
-           <div *ngIf="(emails$ | async) as emails; else noEmails" >
-          <div 
-            *ngFor="let email of emails$ | async"
-            class="flex justify-between items-start border-b py-3 px-2"
-          >
-            <!-- Left Side: Star, Email Checkbox, Mark Read/Unread, and Label -->
-            <div class="flex items-center space-x-4 w-1/7">
-              <!-- Individual Email Checkbox -->
-              <input
-                type="checkbox"
-                class="form-checkbox text-blue-600 h-4 w-4"
-                (change)="selectEmail(email.id)"
-              />
-
-              <!-- Star Icon -->
-              <svg
-                (click)="toggleStar(email.id)"
-                class="w-6 h-6 cursor-pointer"
-                [attr.stroke]="email.isStarred ? 'yellow' : 'gray'"
-                fill="none"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.324 7.155h7.516c.969 0 1.371 1.24.588 1.81l-6.067 4.515 2.324 7.155c.3.921-.755 1.688-1.538 1.118l-6.067-4.515-6.067 4.515c-.783.57-1.838-.197-1.538-1.118l2.324-7.155L.617 11.892c-.783-.57-.381-1.81.588-1.81h7.516L11.049 2.927z"
-                />
-              </svg>
-
-              <!-- Email Label -->
-              <span class="text-sm text-gray-600">{{ email.label }}</span>
-            </div>
-
-            <!-- Center: Email Subject -->
-            <div
-              class="flex-grow text-left text-gray-700 font-medium ml-4 cursor-pointer"
-              (click)="viewEmail(email.id)"
-            >
-              {{ email.subject }}
-            </div>
-
-            <!-- Right Side: Email Date -->
-            <div class="text-sm text-gray-500">
-              {{ email.date | date : "short" }}
-            </div>
-          </div>
-          </div>
           <ng-template #noEmails>
-            <div class="p-5 border-spacing-80 border-black  ">
-              No emails available.
-            </div>
+            <div class="p-8 text-center text-gray-400 text-sm">No emails found.</div>
           </ng-template>
+
           <!-- Pagination -->
           <div class="p-4 flex justify-between items-center border-t">
             <button
               (click)="prevPage()"
-              class="text-blue-500 hover:underline"
               [disabled]="!(hasPrevPage$ | async)"
+              class="px-4 py-1.5 rounded border text-sm font-medium transition-colors"
+              [ngClass]="(hasPrevPage$ | async)
+                ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                : 'border-gray-200 text-gray-300 cursor-not-allowed'"
             >
-              Previous
+              &larr; Previous
             </button>
-            <span class="text-gray-600"
-              >Page {{ currentPage$ | async }} of
-              {{ totalPages$ | async }}</span
-            >
+
+            <span class="text-sm text-gray-500">
+              Page {{ currentPage$ | async }}
+            </span>
+
             <button
               (click)="nextPage()"
-              class="text-blue-500 hover:underline"
               [disabled]="!(hasNextPage$ | async)"
+              class="px-4 py-1.5 rounded border text-sm font-medium transition-colors"
+              [ngClass]="(hasNextPage$ | async)
+                ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                : 'border-gray-200 text-gray-300 cursor-not-allowed'"
             >
-              Next
+              Next &rarr;
             </button>
           </div>
         </div>

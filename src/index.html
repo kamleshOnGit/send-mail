@@ -10,12 +10,25 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js"></script>
 
+  <!-- GitHub Pages SPA routing: restore URL from query string set by 404.html -->
+  <script>
+    (function () {
+      var redirect = window.location.search.slice(1);
+      if (redirect.startsWith('p=/')) {
+        var decoded = redirect
+          .slice(2)
+          .replace(/~and~/g, '&')
+          .split('&q=');
+        var path = decoded[0];
+        var query = decoded[1] ? '?' + decoded[1].replace(/~and~/g, '&') : '';
+        window.history.replaceState(null, null, path + query + window.location.hash);
+      }
+    })();
+  </script>
 </head>
 
-<body class="h-full bg-neutral-200 ">
-
+<body class="h-full bg-neutral-200">
   <app-root></app-root>
-
 </body>
 
 </html>

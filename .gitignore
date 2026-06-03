@@ -40,3 +40,7 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Environment files — contain your Google Client ID, never commit these
+src/environment/environment.ts
+src/environment/environment.prod.ts
