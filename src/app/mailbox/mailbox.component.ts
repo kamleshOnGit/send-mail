@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Observable, Subject } from 'rxjs';
 import { select, Store } from '@ngrx/store';
+import { Actions, ofType } from '@ngrx/effects';
 import { take, takeUntil } from 'rxjs/operators';
 import { State } from '../dataStore/reducers';
 import {
@@ -16,6 +17,15 @@ import {
   toggleStar,
   markAsRead,
   markAsUnread,
+  batchMarkAsRead,
+  batchMarkAsUnread,
+  batchArchiveEmails,
+  batchArchiveEmailsSuccess,
+  batchMarkAsReadSuccess,
+  batchMarkAsUnreadSuccess,
+  batchArchiveEmailsFailure,
+  batchMarkAsReadFailure,
+  batchMarkAsUnreadFailure,
 } from '../dataStore/actions';
 import { Email } from '../dataModel/email-details.model';
 import {
@@ -27,12 +37,14 @@ import {
   dataLoading,
 } from '../dataStore/selector';
 
+import { DecodeHtmlPipe } from '../pipes/decode-html.pipe';
+
 @Component({
   selector: 'app-mailbox',
   standalone: true,
   templateUrl: './mailbox.component.html',
   styleUrl: './mailbox.component.css',
-  imports: [FooterComponent, HeaderComponent, CommonModule, RouterModule],
+  imports: [FooterComponent, HeaderComponent, CommonModule, RouterModule, DecodeHtmlPipe],
 })
 export class MailboxComponent implements OnInit, OnDestroy {
   showDropdown: any;
@@ -43,13 +55,24 @@ export class MailboxComponent implements OnInit, OnDestroy {
   hasNextPage$!: Observable<boolean>;
   hasPrevPage$!: Observable<boolean>;
 
-  private currentLabel: 'inbox' | 'sent' | 'trash' | 'draft' = 'inbox';
+  currentLabel: 'inbox' | 'sent' | 'trash' | 'draft' = 'inbox';
+  selectedEmailIds = new Set<string>();
   private destroy$ = new Subject<void>();
+
+  // Modal State
+  showModal = false;
+  modalType: 'confirm' | 'status' = 'confirm';
+  modalTitle = '';
+  modalMessage = '';
+  modalAction?: () => void;
+  isProcessing = false;
+  modalStatus: 'success' | 'error' | 'none' = 'success';
 
   constructor(
     private gmailService: GmailService,
     private router: Router,
-    private store: Store<State>
+    private store: Store<State>,
+    private actions$: Actions
   ) {}
 
   ngOnInit(): void {
@@ -64,6 +87,42 @@ export class MailboxComponent implements OnInit, OnDestroy {
       .select(dataLoading)
       .pipe(takeUntil(this.destroy$))
       .subscribe((v) => setTimeout(() => (this.loading = v), 100));
+
+    // Listen for batch operation successes
+    this.actions$.pipe(
+      ofType(
+        batchArchiveEmailsSuccess,
+        batchMarkAsReadSuccess,
+        batchMarkAsUnreadSuccess
+      ),
+      takeUntil(this.destroy$)
+    ).subscribe((action) => {
+      this.isProcessing = false;
+      let msg = 'Operation completed successfully';
+      if (action.type === batchArchiveEmailsSuccess.type) msg = 'Emails archived successfully';
+      if (action.type === batchMarkAsReadSuccess.type) msg = 'Emails marked as read';
+      if (action.type === batchMarkAsUnreadSuccess.type) msg = 'Emails marked as unread';
+      
+      this.openStatusModal('Success', msg, 'success');
+    });
+
+    // Listen for batch operation failures
+    this.actions$.pipe(
+      ofType(
+        batchArchiveEmailsFailure,
+        batchMarkAsReadFailure,
+        batchMarkAsUnreadFailure
+      ),
+      takeUntil(this.destroy$)
+    ).subscribe((action) => {
+      this.isProcessing = false;
+      let msg = 'Operation failed. Please try again.';
+      if (action.type === batchArchiveEmailsFailure.type) msg = 'Failed to archive emails';
+      if (action.type === batchMarkAsReadFailure.type) msg = 'Failed to mark emails as read';
+      if (action.type === batchMarkAsUnreadFailure.type) msg = 'Failed to mark emails as unread';
+      
+      this.openStatusModal('Error', msg, 'error');
+    });
 
     // Determine which label this route represents
     const routeLabel = this.getLabelFromUrl(this.router.url);
@@ -170,13 +229,91 @@ export class MailboxComponent implements OnInit, OnDestroy {
     return valid[s] ?? 'inbox';
   }
 
-  // Stubs so the template doesn't break
-  selectAllEmails(_: Event): void {}
-  selectEmail(_: string): void {}
-  moveSelectedEmails(): void {}
-  archiveSelectedEmails(): void {}
-  deleteSelectedEmails(): void {}
-  markSelectedAsSpam(): void {}
-  markSelectedAsUnread(): void {}
-  markSelectedAsRead(): void {}
+  // ── Modal Actions ────────────────────────────────────────────────────────
+
+  openConfirmModal(title: string, message: string, action: () => void): void {
+    this.modalType = 'confirm';
+    this.modalTitle = title;
+    this.modalMessage = message;
+    this.modalAction = action;
+    this.modalStatus = 'none';
+    this.showModal = true;
+  }
+
+  openStatusModal(title: string, message: string, status: 'success' | 'error'): void {
+    this.modalType = 'status';
+    this.modalTitle = title;
+    this.modalMessage = message;
+    this.modalStatus = status;
+    this.showModal = true;
+    
+    // Auto-close status modal after 3 seconds
+    setTimeout(() => {
+      if (this.showModal && this.modalType === 'status') {
+        this.closeModal();
+      }
+    }, 3000);
+  }
+
+  closeModal(): void {
+    this.showModal = false;
+    this.modalAction = undefined;
+  }
+
+  confirmModalAction(): void {
+    if (this.modalAction) {
+      this.modalAction();
+    }
+    this.closeModal();
+  }
+
+  // ── Selection and Batch Actions ──────────────────────────────────────────
+
+  selectAllEmails(event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    if (checkbox.checked) {
+      this.emails$.pipe(take(1)).subscribe((emails) => {
+        emails.forEach((email) => this.selectedEmailIds.add(email.id));
+      });
+    } else {
+      this.selectedEmailIds.clear();
+    }
+  }
+
+  selectEmail(emailId: string): void {
+    if (this.selectedEmailIds.has(emailId)) {
+      this.selectedEmailIds.delete(emailId);
+    } else {
+      this.selectedEmailIds.add(emailId);
+    }
+  }
+
+  isAllSelected(): boolean {
+    let allSelected = false;
+    this.emails$.pipe(take(1)).subscribe((emails) => {
+      allSelected = emails.length > 0 && emails.every((e) => this.selectedEmailIds.has(e.id));
+    });
+    return allSelected;
+  }
+
+  archiveSelectedEmails(): void {
+    if (this.selectedEmailIds.size === 0) return;
+    this.isProcessing = true;
+    this.store.dispatch(batchArchiveEmails({ emailIds: Array.from(this.selectedEmailIds) }));
+    this.selectedEmailIds.clear();
+  }
+
+  markSelectedAsUnread(): void {
+    if (this.selectedEmailIds.size === 0) return;
+    this.isProcessing = true;
+    this.store.dispatch(batchMarkAsUnread({ emailIds: Array.from(this.selectedEmailIds) }));
+    this.selectedEmailIds.clear();
+  }
+
+  markSelectedAsRead(): void {
+    if (this.selectedEmailIds.size === 0) return;
+    this.isProcessing = true;
+    this.store.dispatch(batchMarkAsRead({ emailIds: Array.from(this.selectedEmailIds) }));
+    this.selectedEmailIds.clear();
+  }
 }

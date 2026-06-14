@@ -45,6 +45,18 @@ import {
   updateSignatureFailure,
   updateSignatureSuccess,
   setLoading,
+  batchDeleteEmails,
+  batchDeleteEmailsSuccess,
+  batchDeleteEmailsFailure,
+  batchMarkAsRead,
+  batchMarkAsReadSuccess,
+  batchMarkAsReadFailure,
+  batchMarkAsUnread,
+  batchMarkAsUnreadSuccess,
+  batchMarkAsUnreadFailure,
+  batchArchiveEmails,
+  batchArchiveEmailsSuccess,
+  batchArchiveEmailsFailure,
 } from './actions';
 
 import { GmailService } from '../services/gmail.service';
@@ -257,8 +269,17 @@ export class EmailEffects {
                         })
                       )
                     ),
-                    map((email) =>
-                      saveEmailDetails({
+                    map((email) => {
+                      const subjectHeader = email.payload?.headers?.find(
+                        (h: any) => h.name.toLowerCase() === 'subject'
+                      );
+                      const dateHeader = email.payload?.headers?.find(
+                        (h: any) => h.name.toLowerCase() === 'date'
+                      );
+                      const fromHeader = email.payload?.headers?.find(
+                        (h: any) => h.name.toLowerCase() === 'from'
+                      );
+                      return saveEmailDetails({
                         emailDetails: {
                           id: email.id,
                           historyId: email.historyId,
@@ -267,14 +288,14 @@ export class EmailEffects {
                           sizeEstimate: email.sizeEstimate,
                           snippet: email.snippet,
                           threadId: email.threadId,
-                          subject: '',
+                          subject: subjectHeader ? subjectHeader.value : '',
                           payload: email?.payload ?? undefined,
-                          label: '',
-                          date: '',
-                          isStarred: false,
+                          label: fromHeader ? fromHeader.value : '',
+                          date: dateHeader ? dateHeader.value : '',
+                          isStarred: email.labelIds?.includes('STARRED') || false,
                         },
-                      })
-                    ),
+                      });
+                    }),
                     catchError(() => EMPTY)
                   )
                 )
@@ -375,6 +396,70 @@ export class EmailEffects {
         this.gmailService.updateSignature(sendAsEmail, newSignature).pipe(
           map(() => updateSignatureSuccess({ newSignature })),
           catchError((error) => of(updateSignatureFailure({ error })))
+        )
+      )
+    )
+  );
+
+  batchDeleteEmails$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(batchDeleteEmails),
+      withLatestFrom(this.store.select(selectCurrentLabel)),
+      mergeMap(([{ emailIds }, label]) =>
+        this.gmailService.deleteEmailsByIds(emailIds).pipe(
+          switchMap(() => [
+            batchDeleteEmailsSuccess(),
+            loadEmails({ label })
+          ]),
+          catchError((error) => of(batchDeleteEmailsFailure({ error })))
+        )
+      )
+    )
+  );
+
+  batchMarkAsRead$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(batchMarkAsRead),
+      withLatestFrom(this.store.select(selectCurrentLabel)),
+      mergeMap(([{ emailIds }, label]) =>
+        this.gmailService.markEmailsAsRead(emailIds).pipe(
+          switchMap(() => [
+            batchMarkAsReadSuccess(),
+            loadEmails({ label })
+          ]),
+          catchError((error) => of(batchMarkAsReadFailure({ error })))
+        )
+      )
+    )
+  );
+
+  batchMarkAsUnread$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(batchMarkAsUnread),
+      withLatestFrom(this.store.select(selectCurrentLabel)),
+      mergeMap(([{ emailIds }, label]) =>
+        this.gmailService.markEmailsAsUnread(emailIds).pipe(
+          switchMap(() => [
+            batchMarkAsUnreadSuccess(),
+            loadEmails({ label })
+          ]),
+          catchError((error) => of(batchMarkAsUnreadFailure({ error })))
+        )
+      )
+    )
+  );
+
+  batchArchiveEmails$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(batchArchiveEmails),
+      withLatestFrom(this.store.select(selectCurrentLabel)),
+      mergeMap(([{ emailIds }, label]) =>
+        this.gmailService.batchArchiveEmails(emailIds).pipe(
+          switchMap(() => [
+            batchArchiveEmailsSuccess(),
+            loadEmails({ label })
+          ]),
+          catchError((error) => of(batchArchiveEmailsFailure({ error })))
         )
       )
     )

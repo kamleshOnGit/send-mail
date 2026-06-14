@@ -4,7 +4,6 @@ import { AuthService } from '../services/auth.service';
 
 import { Router } from '@angular/router';
 import { FooterComponent } from '../shared/footer/footer.component';
-import { HeaderComponent } from '../shared/header/header.component';
 import { environment } from '../../environment/environment';
 
 @Component({
@@ -12,7 +11,7 @@ import { environment } from '../../environment/environment';
   standalone: true,
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css'],
-  imports: [CommonModule, FooterComponent, HeaderComponent],
+  imports: [CommonModule, FooterComponent],
 })
 export class LoginComponent {
   params: any;
@@ -40,7 +39,7 @@ export class LoginComponent {
       redirect_uri: this.redirectUri,
       response_type: 'token',
       scope:
-        'https://www.googleapis.com/auth/gmail.settings.basic https://www.googleapis.com/auth/gmail.settings.sharing https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
+        'https://www.googleapis.com/auth/gmail.settings.basic https://www.googleapis.com/auth/gmail.settings.sharing https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/drive.metadata.readonly',
       include_granted_scopes: 'true',
       state: 'pass-through value',
     };

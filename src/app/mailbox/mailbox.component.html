@@ -26,29 +26,40 @@
   <div class="h-100 bg-gray-100 p-4">
     <div class="flex">
       <!-- Sidebar -->
-      <div class="w-1/6 bg-white shadow-lg p-4">
+      <div class="w-1/6 bg-white shadow-sm border-r border-gray-200 p-4 min-h-[calc(100vh-120px)]">
         <button
           (click)="sendSingle()"
-          class="w-full text-white bg-blue-500 hover:bg-blue-600 rounded-lg py-2 mb-4"
+          class="w-full flex items-center justify-center gap-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-full py-3 mb-6 shadow-sm transition-all font-medium"
         >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
           Compose
         </button>
-        <ul class="space-y-2">
+        <ul class="space-y-1">
           <li
             (click)="navigateTo('inbox')"
-            class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
+            [ngClass]="currentLabel === 'inbox' ? 'bg-indigo-50 text-indigo-700 font-semibold active' : 'text-gray-600 hover:bg-gray-100'"
+            class="sidebar-item flex items-center cursor-pointer p-3 rounded-lg transition-colors group"
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <svg 
+              class="w-5 h-5 mr-3" 
+              [ngClass]="currentLabel === 'inbox' ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'" 
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0l-8 4-8-4m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
             Inbox
           </li>
           <li
             (click)="navigateTo('sent')"
-            class="flex items-center text-gray-700 cursor-pointer hover:bg-gray-200 p-2 rounded-lg"
+            [ngClass]="currentLabel === 'sent' ? 'bg-indigo-50 text-indigo-700 font-semibold active' : 'text-gray-600 hover:bg-gray-100'"
+            class="sidebar-item flex items-center cursor-pointer p-3 rounded-lg transition-colors group"
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M16 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l7-3 7 3z" />
+            <svg 
+              class="w-5 h-5 mr-3" 
+              [ngClass]="currentLabel === 'sent' ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'" 
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
             Sent
           </li>
@@ -56,54 +67,92 @@
       </div>
 
       <!-- Main content -->
-      <div class="w-5/6 ml-4">
-        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
-          <div class="p-4 border-b">
-            <h2 class="text-lg font-semibold text-gray-800">Emails</h2>
+      <div class="w-5/6 p-6">
+        <div class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+          <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+              <input
+                type="checkbox"
+                class="form-checkbox text-indigo-600 h-4 w-4 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                [checked]="isAllSelected()"
+                (change)="selectAllEmails($event)"
+              />
+              <div class="flex items-center space-x-2" *ngIf="selectedEmailIds.size > 0">
+                <button (click)="archiveSelectedEmails()" class="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors" title="Archive">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20" />
+                  </svg>
+                </button>
+                <button (click)="markSelectedAsUnread()" class="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors" title="Mark as Unread">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26c.39.26.86.26 1.25 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </button>
+                <span class="text-xs text-gray-500 font-medium ml-2">{{ selectedEmailIds.size }} selected</span>
+              </div>
+              <h2 *ngIf="selectedEmailIds.size === 0" class="text-lg font-bold text-gray-800 capitalize">{{ currentLabel }}</h2>
+            </div>
+            <div class="text-sm text-gray-500">
+              <span *ngIf="(emails$ | async)?.length">{{ (emails$ | async)?.length }} items</span>
+            </div>
           </div>
 
           <!-- Email list -->
-          <ng-container *ngIf="(emails$ | async) as emails">
-            <ng-container *ngIf="emails.length > 0; else noEmails">
-              <div
-                *ngFor="let email of emails"
-                class="flex justify-between items-start border-b py-3 px-2 hover:bg-gray-50 cursor-pointer"
-                (click)="viewEmail(email.id)"
-              >
-                <!-- Left: checkbox + star -->
-                <div class="flex items-center space-x-3 shrink-0" (click)="$event.stopPropagation()">
-                  <input
-                    type="checkbox"
-                    class="form-checkbox text-blue-600 h-4 w-4"
-                    (change)="selectEmail(email.id)"
-                  />
-                  <svg
-                    (click)="toggleStar(email.id)"
-                    class="w-5 h-5 cursor-pointer shrink-0"
-                    [attr.fill]="email.isStarred ? '#facc15' : 'none'"
-                    [attr.stroke]="email.isStarred ? '#facc15' : '#9ca3af'"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                    stroke-width="1.5"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.914c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.518-4.674z" />
-                  </svg>
-                </div>
+          <div class="divide-y divide-gray-100 email-list-container">
+            <ng-container *ngIf="(emails$ | async) as emails">
+              <ng-container *ngIf="emails.length > 0; else noEmails">
+                <div
+                  *ngFor="let email of emails"
+                  [ngClass]="{'bg-indigo-50/30': selectedEmailIds.has(email.id)}"
+                  class="flex items-center py-3 px-4 hover:bg-gray-50 cursor-pointer transition-colors group border-l-4 border-transparent hover:border-indigo-400"
+                  (click)="viewEmail(email.id)"
+                >
+                  <!-- Left: checkbox + star -->
+                  <div class="flex items-center space-x-4 shrink-0" (click)="$event.stopPropagation()">
+                    <input
+                      type="checkbox"
+                      class="form-checkbox text-indigo-600 h-4 w-4 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                      [checked]="selectedEmailIds.has(email.id)"
+                      (change)="selectEmail(email.id)"
+                    />
+                    <button 
+                      (click)="toggleStar(email.id)"
+                      class="star-btn focus:outline-none transition-transform hover:scale-110"
+                    >
+                      <svg
+                        class="w-5 h-5 shrink-0"
+                        [attr.fill]="email.isStarred ? '#facc15' : 'none'"
+                        [attr.stroke]="email.isStarred ? '#facc15' : '#d1d5db'"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                        stroke-width="2"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.914c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.518-4.674z" />
+                      </svg>
+                    </button>
+                  </div>
 
-                <!-- Center: snippet / subject -->
-                <div class="flex-grow text-left ml-3 min-w-0">
-                  <p class="text-sm font-semibold text-gray-800 truncate">{{ email.subject || '(no subject)' }}</p>
-                  <p class="text-xs text-gray-500 truncate">{{ email.snippet }}</p>
+                  <!-- Center: Sender and Subject/Date info -->
+                  <div class="flex-grow text-left ml-6 min-w-0 flex flex-col justify-center">
+                    <!-- Line 1: Sender Name -->
+                    <p class="text-sm font-bold text-gray-900 group-hover:text-indigo-600 truncate transition-colors mb-0.5">
+                      {{ (email.label | decodeHtml) || 'Unknown Sender' }}
+                    </p>
+                    <!-- Line 2: Subject and Date -->
+                    <div class="flex items-center justify-between">
+                      <p class="subject-text text-xs text-gray-500 truncate mr-4">
+                        {{ (email.subject | decodeHtml) || '(no subject)' }}
+                      </p>
+                      <span class="text-[10px] font-medium text-gray-400 shrink-0 tabular-nums">
+                        {{ email.date | date : 'MMM d, yyyy' }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-
-                <!-- Right: date -->
-                <div class="text-xs text-gray-400 shrink-0 ml-3">
-                  {{ email.date | date : 'MMM d' }}
-                </div>
-              </div>
+              </ng-container>
             </ng-container>
-          </ng-container>
+          </div>
 
           <ng-template #noEmails>
             <div class="p-8 text-center text-gray-400 text-sm">No emails found.</div>
@@ -144,4 +193,52 @@
 
   <!-- Footer -->
   <app-footer></app-footer>
+
+  <!-- Custom Modal -->
+  <div *ngIf="showModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div (click)="modalType === 'status' ? closeModal() : null" class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"></div>
+    
+    <!-- Modal Card -->
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+      <div class="p-6 text-center">
+        <!-- Icon logic based on status -->
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4" 
+             [ngClass]="{
+               'bg-red-100 text-red-600': modalType === 'confirm' || (modalType === 'status' && modalStatus === 'error'),
+               'bg-green-100 text-green-600': modalType === 'status' && modalStatus === 'success'
+             }">
+          <!-- Warning Icon -->
+          <svg *ngIf="modalType === 'confirm'" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <!-- Success Icon -->
+          <svg *ngIf="modalType === 'status' && modalStatus === 'success'" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <!-- Error Icon -->
+          <svg *ngIf="modalType === 'status' && modalStatus === 'error'" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+
+        <h3 class="text-xl font-bold text-gray-900 mb-2">{{ modalTitle }}</h3>
+        <p class="text-gray-500">{{ modalMessage }}</p>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="bg-gray-50 px-6 py-4 flex flex-row-reverse gap-3">
+        <button *ngIf="modalType === 'confirm'" 
+                (click)="confirmModalAction()"
+                class="inline-flex justify-center rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-500 transition-colors">
+          Confirm
+        </button>
+        <button (click)="closeModal()"
+                [ngClass]="modalType === 'confirm' ? 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50' : 'bg-indigo-600 text-white hover:bg-indigo-500 w-full'"
+                class="inline-flex justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors">
+          {{ modalType === 'confirm' ? 'Cancel' : 'Close' }}
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

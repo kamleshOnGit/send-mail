@@ -1,0 +1,67 @@
+/* Custom styles for Mailbox component */
+:host {
+  display: block;
+  height: 100%;
+}
+
+.email-list-container {
+  height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar */
+.email-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.email-list-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.email-list-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+.email-list-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Star Toggle Animation */
+.star-btn svg {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.2s ease, stroke 0.2s ease;
+}
+
+.star-btn:active svg {
+  transform: scale(1.4);
+}
+
+/* Sidebar Item refinement */
+.sidebar-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-item.active::after {
+  background-color: #4f46e5;
+}
+
+/* Truncate subject with better control */
+.subject-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

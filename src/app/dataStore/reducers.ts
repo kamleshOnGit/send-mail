@@ -135,9 +135,7 @@ const _emailReducer = createReducer(
     ...state,
     emailDetails: { ...state.emailDetails, [emailDetails.id]: emailDetails },
     emails: state.emails.map((email) =>
-      email.id === emailDetails.id
-        ? { ...email, ...emailDetails, subject: emailDetails.snippet }
-        : email
+      email.id === emailDetails.id ? { ...email, ...emailDetails } : email
     ),
   })),
   on(updateEmailInList, (state, { email }) => ({

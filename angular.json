@@ -21,10 +21,15 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              "src/404.html"
+              "src/404.html",
+              {
+                "glob": "**/*",
+                "input": "node_modules/tinymce",
+                "output": "/tinymce/"
+              }
             ],
             "styles": ["src/styles.css"],
-            "scripts": []
+            "scripts": ["node_modules/tinymce/tinymce.min.js"]
           },
           "configurations": {
             "production": {
@@ -79,9 +84,17 @@
           "options": {
             "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
-            "assets": ["src/favicon.ico", "src/assets"],
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "node_modules/tinymce",
+                "output": "/tinymce/"
+              }
+            ],
             "styles": ["src/styles.css"],
-            "scripts": []
+            "scripts": ["node_modules/tinymce/tinymce.min.js"]
           }
         }
       }

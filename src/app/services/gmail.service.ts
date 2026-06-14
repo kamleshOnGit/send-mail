@@ -230,6 +230,16 @@ export class GmailService {
     );
   }
 
+  // Method to archive emails by removing 'INBOX' label
+  batchArchiveEmails(emailIds: string[]): Observable<any> {
+    const url = `${this.apiUrl}users/me/messages/batchModify`;
+    return this.http.post(
+      url,
+      { ids: emailIds, removeLabelIds: ['INBOX'] },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
   getAccessToken(): string {
     return localStorage.getItem('access_token') || '';
   }

@@ -1,65 +1,114 @@
-<div class="flex flex-col h-screen justify-between">
-  <!-- Header -->
+<div class="flex flex-col min-h-screen bg-gray-50">
   <app-header></app-header>
-    <div class="flex-grow flex items-center justify-center"> 
-    <!-- Google Sign-In Button -->
-    <!-- email-details.component.html -->
-<!-- email-details.component.html -->
-<!-- email-details.component.html -->
-   <div class="p-4">
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="text-center text-gray-500">
-    <p>Loading email details...</p>
-  </div>
+  <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl">
+    <!-- Back Button & Actions -->
+    <div class="flex justify-between items-center mb-6">
+      <button 
+        (click)="goBack()" 
+        class="flex items-center text-gray-600 hover:text-indigo-600 transition-colors font-medium">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back
+      </button>
 
-  <!-- Email Details -->
-  <div *ngIf="!loading && email" class="max-w-4xl mx-auto bg-white shadow-md rounded-lg p-6">
-    
-    <!-- Email ID -->
-    <h2 class="text-2xl font-semibold mb-4">Email ID: <span class="text-gray-700">{{ email.id }}</span></h2>
+      <div class="flex gap-2">
+        <button (click)="replyToEmail()" class="p-2 text-gray-400 hover:bg-white hover:text-indigo-600 rounded-lg border border-transparent hover:border-gray-200 transition-all shadow-sm group" title="Reply">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+        </button>
+      </div>
+    </div>
 
-    <!-- Email Payload -->
-    <div *ngIf="email.payload">
-      <!-- Email From -->
-      <p class="text-lg font-medium mb-2"><strong>From:</strong> <span class="text-gray-800">{{ from }}</span></p>
+    <!-- Loading State -->
+    <div *ngIf="loading" class="flex flex-col items-center justify-center py-20">
+      <svg class="animate-spin h-10 w-10 text-indigo-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p class="text-gray-500 font-medium">Loading email content...</p>
+    </div>
 
-      <!-- Email Subject -->
-      <p class="text-lg font-medium mb-2"><strong>Subject:</strong> <span class="text-gray-800">{{ subject }}</span></p>
+    <!-- Email Details Card -->
+    <article *ngIf="!loading && email" class="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+      <!-- Email Header Info -->
+      <div class="p-6 border-b border-gray-100 bg-white">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6 leading-tight">
+          {{ (subject || '') | decodeHtml }}
+        </h1>
+        
+        <div class="flex items-start justify-between">
+          <div class="flex items-center">
+            <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xl mr-4 shadow-inner">
+              {{ getAvatarInitial(from) }}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-gray-900 text-lg">{{ (from || '') | decodeHtml }}</span>
+              </div>
+              <div class="text-sm text-gray-500">to me</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-sm font-medium text-gray-500">{{ date }}</div>
+            <div class="text-[10px] text-gray-300 font-mono mt-2 uppercase tracking-tighter">ID: {{ email.id }}</div>
+          </div>
+        </div>
+      </div>
 
-      <!-- Email Date -->
-      <p class="text-lg font-medium mb-4"><strong>Date:</strong> <span class="text-gray-600">{{ date }}</span></p>
-
-      <!-- Attachments -->
-      <div *ngIf="attachments.length" class="mb-4">
-        <h3 class="text-xl font-semibold mb-2">Attachments:</h3>
-        <ul class="list-disc list-inside pl-4">
-          <li *ngFor="let attachment of attachments" class="mb-1">
-            <a 
-              [href]="getAttachmentUrl(attachment)" 
-              download="{{ attachment.filename }}" 
-              class="text-blue-600 hover:underline">
-              {{ attachment.filename }} ({{ attachment.size }} bytes)
-            </a>
-          </li>
-        </ul>
+      <!-- Attachments Section (if any) -->
+      <div *ngIf="attachments$ | async as attachedFiles" class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+        <div *ngIf="attachedFiles.length > 0">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+            Attachments ({{ attachedFiles.length }})
+          </h3>
+          <div class="flex flex-wrap gap-4">
+            <div *ngFor="let file of attachedFiles" class="flex items-center bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all group">
+              <div class="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center mr-3">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-gray-900 truncate max-w-[250px]">{{ file.filename }}</div>
+                <div class="text-[10px] text-gray-400 font-medium uppercase">{{ (file.size / 1024) | number:'1.0-1' }} KB</div>
+              </div>
+              <a [href]="getAttachmentUrl(file)" download="{{ file.filename }}" class="ml-6 text-gray-400 hover:text-indigo-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Email Body Content -->
-      <div class="prose prose-sm mt-4">
-        <!-- <div [innerHTML]="bodyContent"></div> -->
-          <iframe [src]="bodyContenturl" class="w-full h-96 border rounded-lg" frameborder="0"></iframe>
+      <div class="relative bg-white min-h-[600px]">
+        <!-- Body Loader -->
+        <div *ngIf="bodyLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-10">
+          <svg class="animate-spin h-8 w-8 text-indigo-400 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.963 7.963 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-xs text-gray-400 font-medium tracking-wide uppercase">Rendering message...</p>
+        </div>
+
+        <iframe 
+          [src]="bodyContenturl" 
+          (load)="onBodyLoad()"
+          class="w-full min-h-[700px] border-none transition-opacity duration-300" 
+          [ngClass]="bodyLoading ? 'opacity-0' : 'opacity-100'"
+          frameborder="0">
+        </iframe>
       </div>
+    </article>
+  </main>
 
-    </div>
-  </div>
-
-</div>
-
-
-
-    </div>
-   <!-- Footer -->
-   <app-footer></app-footer>
-
+  <app-footer></app-footer>
 </div>

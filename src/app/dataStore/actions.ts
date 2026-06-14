@@ -200,6 +200,34 @@ export const setLoading = createAction(
 
 export const cancelBulkSend = createAction('[Email] Cancel Bulk Send');
 
+export const batchDeleteEmails = createAction(
+  '[Email List] Batch Delete Emails',
+  props<{ emailIds: string[] }>()
+);
+export const batchDeleteEmailsSuccess = createAction('[Email List] Batch Delete Emails Success');
+export const batchDeleteEmailsFailure = createAction('[Email List] Batch Delete Emails Failure', props<{ error: any }>());
+
+export const batchMarkAsRead = createAction(
+  '[Email List] Batch Mark As Read',
+  props<{ emailIds: string[] }>()
+);
+export const batchMarkAsReadSuccess = createAction('[Email List] Batch Mark As Read Success');
+export const batchMarkAsReadFailure = createAction('[Email List] Batch Mark As Read Failure', props<{ error: any }>());
+
+export const batchMarkAsUnread = createAction(
+  '[Email List] Batch Mark As Unread',
+  props<{ emailIds: string[] }>()
+);
+export const batchMarkAsUnreadSuccess = createAction('[Email List] Batch Mark As Unread Success');
+export const batchMarkAsUnreadFailure = createAction('[Email List] Batch Mark As Unread Failure', props<{ error: any }>());
+
+export const batchArchiveEmails = createAction(
+  '[Email List] Batch Archive Emails',
+  props<{ emailIds: string[] }>()
+);
+export const batchArchiveEmailsSuccess = createAction('[Email List] Batch Archive Emails Success');
+export const batchArchiveEmailsFailure = createAction('[Email List] Batch Archive Emails Failure', props<{ error: any }>());
+
 // Kept for backwards compat — resets token history when switching labels
 export const resetNextPrevToken = createAction(
   'Reset next & prev Token',

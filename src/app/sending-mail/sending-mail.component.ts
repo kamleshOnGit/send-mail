@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { concatMap, delay, Observable, of, Subject, Subscription } from 'rxjs';
 import { from, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
+import { EditorComponent } from '@tinymce/tinymce-angular';
 import {
   cancelBulkSend,
   loadSheetData,
@@ -34,7 +35,7 @@ export interface SendAsAddress {
   standalone: true,
   templateUrl: './sending-mail.component.html',
   styleUrl: './sending-mail.component.css',
-  imports: [HeaderComponent, FooterComponent, CommonModule, FormsModule],
+  imports: [HeaderComponent, FooterComponent, CommonModule, FormsModule, EditorComponent],
 })
 export class SendingMailComponent implements OnInit, OnDestroy {
   // Form fields
@@ -47,6 +48,13 @@ export class SendingMailComponent implements OnInit, OnDestroy {
   signature = '';
   showCc = false;
   showBcc = false;
+
+  // Message type checkboxes
+  useSimpleText = true;
+  useHtmlTemplate = false;
+
+  // TinyMCE configuration
+  tinymceInit: Record<string, any> = {};
 
   // Google Sheets
   spreadsheetId = '';
@@ -87,6 +95,49 @@ export class SendingMailComponent implements OnInit, OnDestroy {
     this.emailSendingStatus$ = this.store.select(selectEmailSendingStatus);
 
     this.loadSendAsAddresses();
+    this.updateEditorConfig();
+  }
+
+  onSimpleTextChange(): void {
+    this.useSimpleText = true;
+    this.useHtmlTemplate = false;
+    this.updateEditorConfig();
+  }
+
+  onHtmlTemplateChange(): void {
+    this.useHtmlTemplate = true;
+    this.useSimpleText = false;
+    this.updateEditorConfig();
+  }
+
+  updateEditorConfig(): void {
+    if (this.useHtmlTemplate) {
+      this.tinymceInit = {
+        base_url: '/tinymce',
+        suffix: '.min',
+        license_key: 'gpl',
+        plugins: 'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
+        toolbar:
+          'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | code fullscreen preview | removeformat help',
+        menubar: 'file edit view insert format tools table help',
+        height: 400,
+        promotion: false,
+        branding: false,
+      };
+    } else {
+      this.tinymceInit = {
+        base_url: '/tinymce',
+        suffix: '.min',
+        license_key: 'gpl',
+        plugins: 'advlist autolink lists link charmap preview searchreplace visualblocks fullscreen wordcount',
+        toolbar:
+          'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link | fullscreen preview | removeformat',
+        menubar: false,
+        height: 400,
+        promotion: false,
+        branding: false,
+      };
+    }
   }
 
   ngOnDestroy(): void {
@@ -132,12 +183,22 @@ export class SendingMailComponent implements OnInit, OnDestroy {
 
   onSendSingle(): void {
     if (!this.canSendSingle()) return;
+
+    let finalBody = this.emailBody;
+    if (this.useSimpleText) {
+      // Basic HTML to plain text conversion if Simple Text is selected
+      // We keep <br> as newlines and strip other tags
+      finalBody = this.emailBody
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<(?:.|\n)*?>/gm, '');
+    }
+
     this.store.dispatch(
       sendEmail({
         sender: this.senderEmail,
         recipient: this.recipientEmail,
         subject: this.emailSubject,
-        body: this.emailBody,
+        body: finalBody,
         signature: this.signature,
         cc: this.ccEmail || undefined,
         bcc: this.bccEmail || undefined,
@@ -219,12 +280,19 @@ export class SendingMailComponent implements OnInit, OnDestroy {
             return of(null).pipe(
               delay(delayTime),
               concatMap(() => {
+                let finalBody = body;
+                if (this.useSimpleText) {
+                  finalBody = body
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<(?:.|\n)*?>/gm, '');
+                }
+
                 this.store.dispatch(
                   sendEmail({
                     sender: sender || this.senderEmail,
                     recipient,
                     subject,
-                    body,
+                    body: finalBody,
                     signature: signature || '',
                   })
                 );

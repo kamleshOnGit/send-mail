@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { GmailService } from '../services/gmail.service';
 import { FooterComponent } from '../shared/footer/footer.component';
 import { HeaderComponent } from '../shared/header/header.component';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import {
   AttachmentMetadata,
   Email,
@@ -13,19 +13,22 @@ import {
 import { SafeHtml, DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import sanitizeHtml from 'sanitize-html';
 import * as he from 'he';
-import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, switchMap, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { loadEmailDetails } from '../dataStore/actions';
-import { selectEmailDetailsById } from '../dataStore/selector';
+import { selectEmailDetailsById, dataLoading } from '../dataStore/selector';
+import { Subject } from 'rxjs';
+
+import { DecodeHtmlPipe } from '../pipes/decode-html.pipe';
 
 @Component({
   selector: 'app-email-details-component',
   standalone: true,
   templateUrl: './email-details.component.html',
   styleUrl: './email-details.component.css',
-  imports: [FooterComponent, HeaderComponent, CommonModule],
+  imports: [FooterComponent, HeaderComponent, CommonModule, DecodeHtmlPipe],
 })
-export class EmailDetailsComponent implements OnInit {
+export class EmailDetailsComponent implements OnInit, OnDestroy {
   email?: Email;
   from?: string;
   subject?: string;
@@ -33,104 +36,81 @@ export class EmailDetailsComponent implements OnInit {
   bodyContent?: string;
   bodyContenturl?: SafeResourceUrl;
   loading: boolean = true;
-  attachments: any; // Array to hold attachment metadata
+  bodyLoading: boolean = true;
+  attachments$!: Observable<AttachmentMetadata[]>;
   emailDetails$!: Observable<EmailDetails | undefined>;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private gmailService: GmailService,
     private store: Store,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private location: Location
   ) {}
 
-  ngOnInit() {
-    const emailId: any = this.route.snapshot.paramMap.get('id');
-    // this.fetchEmailDetails(emailId);
-    this.emailDetails$ = this.store.select(selectEmailDetailsById(emailId));
-    this.emailDetails$.subscribe((emailDetails) => {
-      if (emailDetails) {
-        // Use cached email details
-        this.email = emailDetails;
-        this.extractEmailDetails();
-
-        console.log(this.email);
-      } else {
-        // Fetch email details from the API
-        // this.fetchEmailDetails(emailId);
-        this.store.dispatch(loadEmailDetails({ emailId }));
-      }
-    });
+  goBack(): void {
+    this.location.back();
   }
 
-  fetchEmailDetails(emailId: string) {
-    this.gmailService.getEmailById(emailId).subscribe(
-      (response) => {
-        this.email = response;
-        this.extractEmailDetails();
-        this.extractAttachments(response);
-        this.loading = false;
-      },
-      (error) => {
-        console.error('Error fetching email details', error);
-        this.loading = false;
-      }
-    );
+  getAvatarInitial(name: string | undefined): string {
+    if (!name) return '?';
+    const decoded = he.decode(name);
+    return decoded.charAt(0).toUpperCase();
   }
 
   getAttachmentUrl(attachment: any): string {
-    // Construct the URL for downloading the attachment
     if (this.email) {
       return `https://www.googleapis.com/gmail/v1/users/me/messages/${
         this.email.id
       }/attachments/${
         attachment.attachmentId
       }?access_token=${localStorage.getItem('access_token')}`;
-    } else {
-      return '';
     }
+    return '';
   }
 
-  extractAttachments(email: any): void {
-    if (email.payload.parts) {
-      const attachmentRequests: Observable<any>[] = email.payload.parts
-        .filter(
-          (part: { [x: string]: any; mimeType: string }) =>
-            part.mimeType === 'application/pdf' && part['body']?.attachmentId
-        )
-        .map((part: { body: { attachmentId: any } }) =>
-          this.gmailService.getAttachmentMetadata(
-            email.id,
-            part.body.attachmentId
-          )
-        );
+  onBodyLoad(): void {
+    this.bodyLoading = false;
+  }
 
-      if (attachmentRequests.length) {
-        forkJoin(attachmentRequests).subscribe((attachmentData: any[]) => {
-          this.attachments = attachmentData.map((data) => ({
-            filename: data.filename,
-            mimeType: data.mimeType,
-            size: data.size,
-          }));
-        });
+  ngOnInit() {
+    const emailId: any = this.route.snapshot.paramMap.get('id');
+    this.emailDetails$ = this.store.select(selectEmailDetailsById(emailId));
+    this.emailDetails$.subscribe((emailDetails) => {
+      if (emailDetails) {
+        this.email = emailDetails;
+        this.extractEmailDetails();
+      } else {
+        this.store.dispatch(loadEmailDetails({ emailId }));
       }
-    }
+    });
+
+    // Drive loading spinner from store
+    this.store
+      .select(dataLoading)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((v) => setTimeout(() => (this.loading = v), 100));
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   extractEmailDetails() {
     if (this.email?.payload) {
-      console.log(this.email.payload);
       const headers = this.email.payload.headers;
       this.from = headers.find((header) => header.name === 'From')?.value;
       this.subject = headers.find((header) => header.name === 'Subject')?.value;
       this.date = headers.find((header) => header.name === 'Date')?.value;
-      this.attachments = this.getAttachments(
+      
+      this.attachments$ = this.getAttachments(
         this.email.payload.parts,
         this.email.id
       );
-      // this.bodyContent = this.getBodyContent(
-      //   this.email.payload.parts,
-      //   this.email.payload.body
-      // );
+
       this.bodyContenturl = this.sanitizer.bypassSecurityTrustResourceUrl(
         'data:text/html;charset=utf-8,' +
           encodeURIComponent(
@@ -140,6 +120,7 @@ export class EmailDetailsComponent implements OnInit {
             )
           )
       );
+      this.bodyLoading = true;
       this.loading = false;
     }
   }
@@ -230,5 +211,15 @@ export class EmailDetailsComponent implements OnInit {
           results.filter((result) => result !== null) as AttachmentMetadata[]
       )
     );
+  }
+
+  replyToEmail(): void {
+    if (!this.email) return;
+    this.router.navigate(['/mailing'], {
+      queryParams: {
+        to: this.from,
+        subject: this.subject ? `Re: ${this.subject}` : undefined,
+      },
+    });
   }
 }
