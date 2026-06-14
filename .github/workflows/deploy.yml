@@ -25,6 +25,14 @@ jobs:
       - name: Install dependencies 🔧
         run: npm ci
 
+      - name: Create environment files 🛠️
+        run: |
+          mkdir -p src/environment
+          cp src/environment/environment.template.ts src/environment/environment.ts
+          cp src/environment/environment.template.ts src/environment/environment.prod.ts
+          # Set production to true in prod file
+          sed -i 's/production: false/production: true/g' src/environment/environment.prod.ts
+
       - name: Build 🏗️
         run: npm run build:prod
 
