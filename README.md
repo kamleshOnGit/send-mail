@@ -1,5 +1,4 @@
 # Send-Mail - Strongly-Typed Microservice Mail Dispatcher
-[![Repository](https://shields.io)](https://github.com)
 
 A production-ready TypeScript messaging module built to manage asynchronous automated email transactions, secure API handshakes, and strict notification payload validation.
 
