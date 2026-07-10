@@ -15,7 +15,7 @@ import { environment } from '../../environment/environment';
 })
 export class LoginComponent {
   params: any;
-  redirectUri = environment.googleAuthRedirectUri;
+  redirectUri = `${window.location.origin}/auth-callback`;
   constructor(
     private authServiceCustom: AuthService,
     private router: Router

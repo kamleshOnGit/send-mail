@@ -14,6 +14,5 @@
 
 export const environment = {
   production: false,
-  googleAuthRedirectUri: 'http://localhost:4200/auth-callback',
   googleClientId: '462804174068-i6mo9v0eg6aq2sja08f4q8a2g6admi2d.apps.googleusercontent.com',
 };
