@@ -8,8 +8,9 @@
     // When GitHub Pages 404s on a deep link like /send-mail/inbox,
     // this script encodes the path into the query string and redirects
     // to index.html, which the redirect handler below picks back up.
-    var segmentCount = 1;
     var l = window.location;
+    var isProjectPage = l.hostname.endsWith('.github.io') && l.pathname.startsWith('/send-mail/');
+    var segmentCount = isProjectPage ? 1 : 0;
     l.replace(
       l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
       l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?p=/' +

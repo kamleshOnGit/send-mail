@@ -20,7 +20,7 @@
           .slice(2)
           .replace(/~and~/g, '&')
           .split('&q=');
-        var path = decoded[0];
+        var path = '/' + decoded[0].replace(/^\//, '');
         var query = decoded[1] ? '?' + decoded[1].replace(/~and~/g, '&') : '';
         window.history.replaceState(null, null, path + query + window.location.hash);
       }
