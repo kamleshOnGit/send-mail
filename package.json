@@ -8,7 +8,7 @@
     "build:prod": "ng build --configuration production --base-href ./ --deploy-url ./",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "deploy": "npm run build:prod && npx gh-pages -d dist/send-mail"
+    "deploy": "npm run build:prod && npx gh-pages -d dist/send-mail/browser"
   },
   "private": true,
   "dependencies": {
